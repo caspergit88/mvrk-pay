@@ -19,17 +19,18 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [x] Project URL and publishable key in `.env.local` (public values). Still with David, for Vercel only: service-role key, `CRON_SECRET`, Resend keys, N-Genius key.
 - [ ] Weddings app URL for the launcher tile — a Settings → Apps row, whenever convenient.
 
-## Phase 2 — Foundation · next
+## Phase 2 — Foundation · **built 12 Oct; awaiting the Vercel project and first login**
 
-- [ ] `create-next-app` with the weddings options (TypeScript, Tailwind v4, App Router, `@/*` alias, ESLint), copy `globals.css`, fonts, `ui.tsx`, `forms.tsx`, `supabase/*`, `auth.ts`, `format.ts`, `middleware.ts`, `scripts/setup-database.ts` (tracker table → `pay._migrations`).
-- [x] Migrations 0001–0004 applied (check-in 1). 
-- [ ] Create the admin login (`npm run setup:db -- --commit --admin-email …` once the service-role key is in Vercel, or Settings → Users from a first admin created by hand).
-- [ ] Sign-in: domain check (client + server + DB), location chip, password, "Who are you?" step with staff name + PIN, `pay.sessions` row with 22:00 expiry, Switch person, sign out.
-- [ ] Launcher `/apps` (admin), header "Apps" link.
-- [ ] Settings: Locations, Desks (display link + regenerate key), Staff (names, PIN, order), Users (create with password, role, location, reset, deactivate, lock-out guard), Apps.
-- [ ] Cron: `/api/cron/expire-sessions` (22:00 local), `vercel.json`.
-- [ ] Vercel project `mvrk-pay` with env vars; CI (lint, typecheck) on push.
-- [ ] Acceptance SQL for roles, domain rule, session expiry.
+- [x] Next.js 15 app in the weddings style: same tooling and layout, Midnight Navy palette, UI and form kits, Supabase clients, `db()` schema helper, middleware, PWA manifest.
+- [x] Sign-in: domain check in the browser (location chip; "couldn't check" when offline), on the server and in the database; password; must-change-password page; `pay.sessions` row with the 22:00 expiry (admin/finance at sign-in, reception after "Who are you?").
+- [x] "Who are you?": staff name + PIN → `pay.start_session`; Switch person → `pay.end_session`; expired sessions bounce to sign-in with a reason.
+- [x] Launcher `/apps` from `pay.apps`; header with location, person, Apps/Settings links, Switch person, Sign out.
+- [x] Settings: Locations (incl. Wi-Fi, limits, logout time, PIN rule), Desks & displays (links, regenerate key, iPad steps), Staff names (PINs, order, remove/put back), Users (create with starter password, role, reset, deactivate, lock-out guard), Apps; Providers read-only until Phase 5.
+- [x] Migration 0005 (staff_names view, set_staff_pin, rotate_display_key, password_changed, end_session, desk → desk_state trigger) — applied to the shared project and recorded.
+- [x] Cron `/api/cron/expire-sessions` (+ expires stale codes), `vercel.json` at 19:05 and 20:05 UTC.
+- [x] Checks: typecheck, lint, production build, 40 database acceptance tests, Playwright for the public flow (domain tests run where Supabase is reachable). CI workflow runs all of it on push.
+- [ ] **David:** create the Vercel project with the four environment variables (`DEPLOYMENT.md` §1), then the first admin login (§2). Until then nothing can sign in.
+- [ ] Placeholders at `/pay`, `/transactions`, `/report` are filled by Phases 3–4.
 
 ## Phase 3 — Payments
 

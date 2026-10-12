@@ -46,3 +46,7 @@ next-env.d.ts
 # Reference Worker: its local secrets never come along
 reference/mvrk-qr-desk/.dev.vars
 reference/mvrk-qr-desk/node_modules/
+
+# Playwright output
+/test-results/
+/playwright-report/

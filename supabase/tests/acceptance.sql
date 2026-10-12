@@ -106,6 +106,41 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 0005: staff view, PIN helper, desk → desk_state, password flag (as admin)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  admin_id uuid := gen_random_uuid();
+  loc uuid := (select id from pay.locations where slug = 'waspo');
+  s uuid; d uuid; k1 text; k2 text;
+begin
+  insert into auth.users (id, email) values (admin_id, 'david@mvrkhq.com');
+  insert into pay.profiles (id, email, full_name, role) values (admin_id, 'david@mvrkhq.com', 'David', 'admin');
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', admin_id, 'session_id', gen_random_uuid())::text, true);
+
+  insert into pay.staff (location_id, name) values (loc, 'Omar') returning id into s;
+  perform pg_temp.assert((select has_pin from pay.staff_names where id = s) = false, 'staff_names shows no PIN yet and never the hash');
+  perform pg_temp.assert_raises(format($q$select pay.set_staff_pin('%s', '12')$q$, s), 'a PIN must be four digits');
+  perform pay.set_staff_pin(s, '4321');
+  perform pg_temp.assert((select has_pin from pay.staff_names where id = s), 'set_staff_pin stores a PIN');
+  perform pg_temp.assert((select pin_hash from pay.staff where id = s) <> '4321', 'the PIN is hashed, not stored');
+  perform pay.set_staff_pin(s, '');
+  perform pg_temp.assert((select has_pin from pay.staff_names where id = s) = false, 'an empty PIN clears it');
+
+  insert into pay.desks (location_id, slug, name) values (loc, 'desk-2', 'Desk 2') returning id into d;
+  perform pg_temp.assert(exists (select 1 from pay.desk_state where desk_id = d), 'a new desk gets its display row automatically');
+  select display_key into k1 from pay.desks where id = d;
+  k2 := pay.rotate_display_key(d);
+  perform pg_temp.assert(k2 <> k1 and length(k2) = 36 and (select display_key from pay.desks where id = d) = k2, 'rotate_display_key issues a fresh 36-char key');
+
+  perform pay.password_changed();
+  perform pg_temp.assert((select must_change_password from pay.profiles where id = admin_id) = false, 'password_changed clears the flag for the caller');
+
+  perform pg_temp.assert_raises(format($q$update pay.profiles set role = 'finance' where id = '%s'$q$, admin_id), 'the only admin cannot be demoted');
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Payments, as the reception user at KitePeople (JWT claims are simulated)
 -- ---------------------------------------------------------------------------
 do $$

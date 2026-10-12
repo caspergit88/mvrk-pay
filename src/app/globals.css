@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+/*
+ * Midnight Navy — the same palette as the weddings app, copied rather than
+ * shared so the two apps stay apart (CONVENTIONS.md).
+ *
+ * The app is written in `stone-*`; the stone ramp itself is redefined here to
+ * the Midnight Navy neutrals, so a future change of mind is this file.
+ *
+ * The ramp is cool and slightly blue where Tailwind's stone is warm and brown.
+ * Nothing else about it moves: stone-900 is still the darkest text, stone-200
+ * is still a hairline border, so every judgement already made about which step
+ * to use still holds.
+ *
+ * The three signal colours — emerald, amber, red — are deliberately left as
+ * they are. They carry meaning rather than style: green is settled, amber needs
+ * attention, red is wrong. Tuning them towards the navy would make them
+ * prettier and harder to tell apart, and the one thing a payment alarm cannot
+ * afford is to look like the page around it.
+ */
+@theme {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), Georgia, serif;
+
+  /* Neutrals — cool, navy-leaning. Replaces Tailwind's warm stone. */
+  --color-stone-50: #f4f5f8;
+  --color-stone-100: #ebeef4;
+  --color-stone-200: #dbe0ea;
+  --color-stone-300: #c7cedc;
+  --color-stone-400: #98a1b4;
+  /*
+   * Captions live at 500, so it is set by contrast rather than by taste:
+   * 4.7:1 on white and 4.6:1 on the page ground. Tailwind's own stone-500 is
+   * borderline on a tinted background, and this ground is tinted.
+   */
+  --color-stone-500: #646d80;
+  --color-stone-600: #586174;
+  --color-stone-700: #464e60;
+  --color-stone-800: #333b4b;
+  --color-stone-900: #1f2733;
+  --color-stone-950: #141a24;
+
+  /*
+   * The one accent. Used where the design wants to say "Riah" rather than
+   * "a form": the navigation, the couple-facing headers, a primary link.
+   */
+  --color-navy-50: #eef2f9;
+  --color-navy-100: #dae3f1;
+  --color-navy-200: #b6c6e0;
+  --color-navy-300: #8fa5cb;
+  --color-navy-400: #6580b0;
+  --color-navy-500: #3a5c8c;
+  --color-navy-600: #2f4a71;
+  --color-navy-700: #263a59;
+  --color-navy-800: #1e2a45;
+  --color-navy-900: #172136;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/*
+ * Figures line up in tables without every table having to ask.
+ *
+ * A column of money whose digits are different widths is a column that cannot
+ * be scanned, and this app is mostly columns of money.
+ */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Headings in the staff app carry the display face. Scoped to .app-shell: the
+ * customer display and the launcher set their own type.
+ */
+.app-shell h1,
+.app-shell h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------------------
+   Printing (the end-of-day report, Phase 4, adds its own rules)
+   --------------------------------------------------------------------------- */
+@media print {
+  .print-hide,
+  nav,
+  header.sticky {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

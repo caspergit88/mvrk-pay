@@ -6,7 +6,7 @@ Built the same way as the weddings app (Next.js 15, Supabase, Vercel) and kept a
 
 ## Status
 
-Phase 1 of 6 (plan, conventions, data model) is done and check-in 1 has passed: the `pay` schema is live in the shared Supabase project — see `docs/PLAN.md`. The app code starts in Phase 2. Until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (deployed at `mvrk-qr-desk.dormies.workers.dev`), which this build replaces.
+Phases 1–2 of 6 are built: the `pay` schema is live in the shared Supabase project, and the app has sign-in (domain rule, name + PIN, 22:00 expiry), the launcher and Settings. It is waiting for its Vercel project (`DEPLOYMENT.md`). Payments arrive in Phase 3; until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (`mvrk-qr-desk.dormies.workers.dev`), which this build replaces. Progress: `docs/PLAN.md`.
 
 ## What is here
 
@@ -17,8 +17,20 @@ Phase 1 of 6 (plan, conventions, data model) is done and check-in 1 has passed: 
 | `docs/PLAN.md` | Phases, what is done, what is next, what each check-in needs |
 | `docs/DECISIONS.md` | Decisions taken between check-ins and how to reverse them |
 | `supabase/migrations/` | The `pay` schema: tables, functions, RLS, seed — proven on a scratch Postgres |
-| `supabase/tests/acceptance.sql` | 29 database acceptance tests; one transaction, rolls back |
+| `supabase/tests/acceptance.sql` | 40 database acceptance tests; one transaction, rolls back (`npm run test:db`) |
+| `src/` | The Next.js app (App Router); `docs/CONVENTIONS.md` says where things go |
+| `DEPLOYMENT.md` | Vercel project, environment variables, first admin login |
 | `reference/mvrk-qr-desk/` | The working Cloudflare Worker this app ports (screens, Network client, 27 end-to-end tests) |
+
+## Running it
+
+```bash
+npm install
+cp .env.example .env.local      # fill in the Supabase values (DEPLOYMENT.md)
+npm run dev                     # http://localhost:3000
+npm run typecheck && npm run lint && npm run build
+npm run test:e2e                # Playwright, against a running app (E2E_BASE_URL); login tests need E2E_EMAIL/E2E_PASSWORD
+```
 
 ## Running the database tests locally
 
