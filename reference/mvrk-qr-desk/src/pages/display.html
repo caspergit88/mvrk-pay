@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1220">
+<title>{{APP_NAME}}</title>
+<style>
+  :root { --bg:#0b1220; --text:#f1f5f9; --muted:#94a3b8; --ok:#22c55e; --warn:#f59e0b; --danger:#f87171; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+         overflow:hidden; user-select:none; -webkit-user-select:none; cursor:none; }
+  .screen { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+            padding:9vmin 4vmin 4vmin; opacity:0; transition:opacity .35s ease; pointer-events:none; }
+  .screen.on { opacity:1; pointer-events:auto; }
+  .brand { position:absolute; top:3vmin; left:0; right:0; text-align:center; font-size:2.4vmin; letter-spacing:.35em; text-transform:uppercase; color:var(--muted); font-weight:600; z-index:2; }
+  /* idle */
+  #idle .big { font-size:7vmin; font-weight:700; letter-spacing:-.01em; }
+  #idle .sub { font-size:3vmin; color:var(--muted); margin-top:1.5vmin; }
+  /* pay */
+  #pay .amount { font-size:8.5vmin; font-weight:800; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  #pay .note { font-size:3vmin; color:var(--muted); margin:1.2vmin 0 2.2vmin; min-height:3.2vmin; }
+  .qrcard { background:#fff; border-radius:3vmin; padding:2.2vmin; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+  .qrcard svg { display:block; width:min(50vh, 78vw); height:min(50vh, 78vw); }
+  .haswifi #pay .qrcard svg { width:min(46vh, 78vw); height:min(46vh, 78vw); }   /* room for the Wi-Fi button */
+  #pay .hint { margin-top:2.6vmin; font-size:3vmin; color:var(--muted); }
+  #pay .hint b { color:var(--text); font-weight:600; }
+  #pay .declined { margin-top:1.2vmin; font-size:2.8vmin; color:var(--warn); min-height:3vmin; }
+  /* paid */
+  #paid { background:#052e16; }
+  #paid .check { width:22vmin; height:22vmin; border-radius:50%; background:var(--ok); display:grid; place-items:center; margin-bottom:4vmin; animation:pop .45s cubic-bezier(.2,1.4,.4,1); }
+  #paid .check svg { width:13vmin; height:13vmin; }
+  #paid .big { font-size:8vmin; font-weight:800; }
+  #paid .amount { font-size:5vmin; color:#bbf7d0; margin-top:1.5vmin; }
+  #paid .sub { font-size:3vmin; color:#86efac; margin-top:2.5vmin; }
+  @keyframes pop { from { transform:scale(.3); opacity:0 } to { transform:scale(1); opacity:1 } }
+  /* expired */
+  #expired .big { font-size:6vmin; font-weight:700; color:var(--warn); }
+  #expired .sub { font-size:3vmin; color:var(--muted); margin-top:1.5vmin; }
+  /* guest Wi-Fi: a card on the idle screen, a button during payment that opens a full Wi-Fi screen */
+  .nowifi .wifi, .nowifi .wifibtn { display:none; }
+  .wifi { display:flex; align-items:center; gap:2.4vmin; text-align:left; }
+  .wifiqr { background:#fff; border-radius:1.6vmin; padding:1vmin; flex:none; }
+  .wifiqr svg { display:block; }
+  .wifititle { font-weight:600; color:var(--text); }
+  .wifisub { color:var(--muted); margin-top:.6vmin; }
+  #idle .wifi { margin-top:7vmin; }
+  #idle .wifiqr svg { width:22vmin; height:22vmin; }
+  #idle .wifititle { font-size:3.2vmin; }
+  #idle .wifisub { font-size:2.4vmin; }
+  button { font:inherit; -webkit-tap-highlight-color:transparent; }
+  .wifibtn { margin-top:2.4vmin; padding:1.6vmin 3.2vmin; font-size:2.6vmin; font-weight:600; color:var(--text); background:rgba(255,255,255,.08);
+             border:1px solid rgba(255,255,255,.22); border-radius:99vmin; cursor:pointer; }
+  .wifibtn:active { background:rgba(255,255,255,.18); }
+  #wifi .title { font-size:5.5vmin; font-weight:700; }
+  #wifi .sub { font-size:2.8vmin; color:var(--muted); margin:1.2vmin 0 3vmin; }
+  #wifi .qrcard svg { width:min(42vh, 70vw); height:min(42vh, 70vw); }
+  #wifi .details { margin-top:2.6vmin; font-size:3vmin; }
+  #wifi .details b { font-weight:700; }
+  .backbtn { margin-top:3.4vmin; padding:1.8vmin 4vmin; font-size:3vmin; font-weight:700; color:#06281f; background:#2dd4bf; border:0; border-radius:99vmin; cursor:pointer; }
+  .backbtn:active { filter:brightness(.9); }
+  #wifi .auto { margin-top:1.6vmin; font-size:2.2vmin; color:var(--muted); }
+  /* the display is usually a touch screen; show the mouse pointer only while a mouse is moving */
+  body.mouse { cursor:auto; }
+  /* connection dot */
+  .conn { position:absolute; right:2vmin; bottom:2vmin; width:1.4vmin; height:1.4vmin; border-radius:50%; background:var(--danger); opacity:.7; }
+  .conn.on { background:var(--ok); opacity:.35; }
+</style>
+</head>
+<body class="{{WIFI_CLASS}}">
+  <div class="brand">{{BRAND}}</div>
+
+  <section class="screen on" id="idle">
+    <div class="big">{{IDLE_TEXT}}</div>
+    <div class="sub">Pay by card with your phone — a QR code will appear here</div>
+    <div class="wifi">
+      <div class="wifiqr">{{WIFI_QR_HTML}}</div>
+      <div>
+        <div class="wifititle">No mobile data? Join our free Wi-Fi</div>
+        <div class="wifisub">Scan with your phone camera, then tap “Join”<br>{{WIFI_DETAILS}}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="pay">
+    <div class="amount" id="pAmount">EUR 0.00</div>
+    <div class="note" id="pNote"></div>
+    <div class="qrcard" id="qr"></div>
+    <div class="hint">Open your phone <b>camera</b>, point it at the code, then tap the link to pay</div>
+    <div class="declined" id="pDeclined"></div>
+    <button class="wifibtn" id="wifiBtn" type="button">No internet? Tap here to join our free Wi-Fi</button>
+  </section>
+
+  <section class="screen" id="wifi">
+    <div class="title">Join our free Wi-Fi</div>
+    <div class="sub">Scan with your phone camera, then tap “Join” — then come back to the payment code</div>
+    <div class="qrcard">{{WIFI_QR_HTML}}</div>
+    <div class="details">{{WIFI_DETAILS}}</div>
+    <button class="backbtn" id="wifiBack" type="button">Back to payment</button>
+    <div class="auto">Goes back to the payment code by itself in a moment</div>
+  </section>
+
+  <section class="screen" id="paid">
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#052e16" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg></div>
+    <div class="big">Paid — thank you</div>
+    <div class="amount" id="paidAmount"></div>
+    <div class="sub">You can put your phone away</div>
+  </section>
+
+  <section class="screen" id="expired">
+    <div class="big">This code has expired</div>
+    <div class="sub">Please ask the desk for a new one</div>
+  </section>
+
+  <div class="conn" id="conn"></div>
+
+<script>
+(function () {
+  'use strict';
+  var DESK = '{{DESK}}', KEY = '{{KEY}}';
+  var DEMO = /[?&]demo=1/.test(location.search);
+  var ws = null, pollTimer = null, reconnectTimer = null, wsFailures = 0, shownRef = null, shownStatus = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fmt(n, cur) {
+    try { return new Intl.NumberFormat('en', { style: 'currency', currency: cur, currencyDisplay: 'code' }).format(n).replace(/\u00a0/g, ' ').replace(/\s+/g, ' '); }
+    catch (e) { return cur + ' ' + Number(n).toFixed(2); }
+  }
+  function show(id) {
+    ['idle', 'pay', 'paid', 'expired', 'wifi'].forEach(function (s) { $(s).classList.toggle('on', s === id); });
+  }
+
+  // Wi-Fi screen: opened by the customer with the button on the payment screen; closes with "Back", on its own
+  // after WIFI_HOLD_MS, or the moment the payment is confirmed / cleared / expired.
+  var WIFI_HOLD_MS = 45000, wifiOpen = false, wifiTimer = null, lastSnap = null;
+  function openWifi() {
+    if (wifiOpen) return;
+    wifiOpen = true; show('wifi');
+    clearTimeout(wifiTimer); wifiTimer = setTimeout(closeWifi, WIFI_HOLD_MS);
+  }
+  function closeWifi() {
+    clearTimeout(wifiTimer); wifiTimer = null;
+    if (!wifiOpen) return;
+    wifiOpen = false;
+    if (lastSnap) render(lastSnap); else show('idle');
+  }
+  $('wifiBtn').addEventListener('click', openWifi);
+  $('wifiBack').addEventListener('click', closeWifi);
+
+  // Hide the mouse pointer unless a mouse is actually being moved (touch screens never show it).
+  var mouseTimer = null;
+  document.addEventListener('mousemove', function () {
+    document.body.classList.add('mouse'); clearTimeout(mouseTimer);
+    mouseTimer = setTimeout(function () { document.body.classList.remove('mouse'); }, 3000);
+  });
+
+  // While an order is waiting, ask the server to check the gateway every few seconds (this runs the check on the
+  // browser-request path, which stays reachable even when the server's own background path is being refused).
+  var checkTimer = null;
+  function setChecking(on) {
+    if (on && !checkTimer && !DEMO) {
+      checkTimer = setInterval(function () {
+        fetch('/api/desks/' + DESK + '/check' + (KEY ? '?key=' + encodeURIComponent(KEY) : ''), { method: 'POST', credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; }).then(function (s) { if (s) render(s); }).catch(function () {});
+      }, 4000);
+    } else if (!on && checkTimer) { clearInterval(checkTimer); checkTimer = null; }
+  }
+
+  function render(snap) {
+    lastSnap = snap;
+    var cur = snap && snap.current;
+    setChecking(!!(cur && cur.status === 'waiting'));
+    var waiting = !!(cur && cur.status === 'waiting');
+    if (wifiOpen && !waiting) { wifiOpen = false; clearTimeout(wifiTimer); wifiTimer = null; }   // paid/expired/cleared wins
+    if (!cur) { show('idle'); shownRef = null; shownStatus = null; return; }
+    if (cur.status === 'paid') {
+      $('paidAmount').textContent = fmt(cur.amount, cur.currency);
+      if (shownRef !== cur.orderRef || shownStatus !== 'paid') { show('paid'); }
+    } else if (cur.status === 'expired') {
+      show('expired');
+    } else {
+      $('pAmount').textContent = fmt(cur.amount, cur.currency);
+      $('pNote').textContent = cur.note || '';
+      $('pDeclined').textContent = cur.failedAttempts ? 'Card declined — please try again or use another card' : '';
+      if (shownRef !== cur.orderRef) { $('qr').innerHTML = cur.qrSvg || ''; }
+      if (shownRef !== cur.orderRef && wifiOpen) { wifiOpen = false; clearTimeout(wifiTimer); wifiTimer = null; }   // a new code replaces the Wi-Fi screen
+      show(wifiOpen ? 'wifi' : 'pay');
+    }
+    shownRef = cur.orderRef; shownStatus = cur.status;
+  }
+
+  function setConn(on) { $('conn').className = 'conn' + (on ? ' on' : ''); }
+
+  function stateUrl() { return '/api/desks/' + DESK + '/state' + (KEY ? '?key=' + encodeURIComponent(KEY) : ''); }
+  function wsUrl() { return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/desks/' + DESK + '/ws' + (KEY ? '?key=' + encodeURIComponent(KEY) : ''); }
+
+  function connect() {
+    if (DEMO) return;
+    if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
+    clearTimeout(reconnectTimer); stopPolling();
+    try { ws = new WebSocket(wsUrl()); } catch (e) { wsFailures++; startPolling(); return; }
+    var opened = false;
+    var ping = setInterval(function () { try { if (ws && ws.readyState === 1) ws.send('ping'); } catch (e) {} }, 25000);
+    ws.onopen = function () { opened = true; wsFailures = 0; setConn(true); stopPolling(); };
+    ws.onmessage = function (ev) { if (ev.data === 'pong') return; try { render(JSON.parse(ev.data)); } catch (e) {} };
+    ws.onclose = function () {
+      clearInterval(ping); ws = null; if (!opened) wsFailures++; setConn(false);
+      if (wsFailures >= 2) startPolling();
+      reconnectTimer = setTimeout(connect, Math.min(15000, 1000 * Math.pow(2, Math.min(wsFailures, 4))));
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+  function startPolling() {
+    if (pollTimer) return;
+    var tick = function () {
+      fetch(stateUrl(), { cache: 'no-store', credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (s) { setConn(true); render(s); })
+        .catch(function () { setConn(false); });
+    };
+    tick(); pollTimer = setInterval(tick, 2000);
+  }
+  function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+  // Resync whenever the page becomes visible again (iPad woke up, tab switched back).
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { if (!ws || ws.readyState !== 1) connect(); else { try { ws.send('sync'); } catch (e) {} } } });
+  window.addEventListener('online', connect);
+
+  // Keep the screen awake where the browser allows it (Safari 16.4+, Chrome). Needs one tap on some devices.
+  var lock = null;
+  function wake() {
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').then(function (l) { lock = l; l.addEventListener('release', function () { lock = null; }); }).catch(function () {});
+  }
+  wake();
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !lock) wake(); });
+  document.addEventListener('click', function () { if (!lock) wake(); });
+
+  if (DEMO) {
+    setConn(true);
+    var qr = demoQr();
+    var step = 0;
+    var cycle = function () {
+      var s = step++ % 4;
+      if (s === 0) render({ current: null });
+      if (s === 1) render({ current: { orderRef: 'demo' + step, status: 'waiting', amount: 120, currency: 'EUR', note: 'Kite lesson · Anna', qrSvg: qr, failedAttempts: 0 } });
+      if (s === 2) render({ current: { orderRef: 'demo' + (step - 1), status: 'waiting', amount: 120, currency: 'EUR', note: 'Kite lesson · Anna', qrSvg: qr, failedAttempts: 1 } });
+      if (s === 3) render({ current: { orderRef: 'demo' + (step - 2), status: 'paid', amount: 120, currency: 'EUR', qrSvg: qr } });
+    };
+    cycle(); setInterval(cycle, 4000);
+  } else {
+    connect();
+  }
+
+  function demoQr() {
+    var s = '<svg viewBox="0 0 25 25" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect width="25" height="25" fill="#fff"/>';
+    var seed = 11;
+    var finder = function (x, y, ox, oy) { var dx = x - ox, dy = y - oy; if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null; var ring = Math.max(Math.abs(dx - 3), Math.abs(dy - 3)); return ring === 3 || ring <= 1; };
+    for (var y = 0; y < 25; y++) for (var x = 0; x < 25; x++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      var f = finder(x, y, 0, 0); if (f === null) f = finder(x, y, 18, 0); if (f === null) f = finder(x, y, 0, 18);
+      var on = f === null ? (seed % 3 === 0) : f;
+      if (on) s += '<rect x="' + x + '" y="' + y + '" width="1" height="1"/>';
+    }
+    return s + '</svg>';
+  }
+})();
+</script>
+</body>
+</html>

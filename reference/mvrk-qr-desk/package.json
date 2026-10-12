@@ -1,0 +1,17 @@
+{
+  "name": "mvrk-qr-desk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Amount in, N-Genius pay-by-QR out, on a customer-facing display. Cloudflare Worker + Durable Object.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "secrets": "node scripts/set-secrets.mjs",
+    "test": "node test/run.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

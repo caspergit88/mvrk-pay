@@ -1,0 +1,47 @@
+# MVRK Pay — Cloudflare Worker configuration
+# Deploy with:  npx wrangler deploy
+name = "mvrk-qr-desk"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Plain settings (safe to keep in this file). Secrets are set separately — see README.
+[vars]
+NGENIUS_ENV = "live"                   # "live" or "sandbox"
+NGENIUS_REALM = "NetworkInternational"  # identity realm: "NetworkInternational" for live UAE, "ni" for sandbox
+BRAND = "MVRK"                         # short brand label on the customer display and pay pages
+APP_NAME = "MVRK Pay"                  # product name on the staff screen, sign-in page and browser tabs
+# Guest Wi-Fi QR on the customer display (optional). Set WIFI_SSID and WIFI_PASSWORD in the Cloudflare
+# dashboard (Settings → Variables and Secrets, as Secrets so they survive redeploys); leave unset to hide the card.
+# WIFI_SECURITY defaults to WPA (also use for WPA2/WPA3); "nopass" for an open network. WIFI_HIDDEN = "true" for a hidden SSID.
+DESKS = "desk-1"                       # comma-separated list, e.g. "desk-1,desk-2"
+DISPLAY_IDLE_TEXT = "Ready when you are"
+DEFAULT_EMAIL = "payments@mvrk.ae"     # N-Genius requires an email on every order; receipts go here
+ORDER_EXPIRY_MIN = "20"                # QR stops being accepted after this many minutes
+SESSION_DAYS = "30"                    # staff stay signed in this long
+MAX_AMOUNT = "50000"                   # sanity limit per payment (in the chosen currency)
+
+# One entry per outlet (from N-Genius portal → Settings → Organisational hierarchy). Euro only: the account is a
+# euro merchant account. With a single outlet the staff screen hides the currency choice altogether.
+OUTLETS = """
+[
+  { "code": "EUR", "label": "Euro", "currency": "EUR", "ref": "85c6ced8-572f-4b64-934b-3861f4552cab" }
+]
+"""
+
+# Live state per desk (what the customer display is showing) lives in a Durable Object.
+[[durable_objects.bindings]]
+name = "DESK"
+class_name = "Desk"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Desk"]
+
+# Let the Worker import the HTML pages as text.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[observability]
+enabled = true
