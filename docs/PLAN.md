@@ -54,10 +54,11 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [ ] Still to do here: refund state surfaced from webhooks on the list (Check already records it); provider portal deep links.
 - [ ] **Check-in 3 (David):** add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Vercel and a finance email per location (Settings → Locations), close one real day and check the slip against the Network portal.
 
-## Phase 5 — Providers and settings
+## Phase 5 — Providers and settings (next — hand-over point to Claude Code)
 
-- [ ] Settings → Payment providers (max five, default per location, credentials "set"/"not set", Test connection, webhook URL shown).
-- [ ] Settings → Apps, audit log view.
+- [ ] Settings → Payment providers: add/edit (location, kind, name, outlet reference, live/sandbox, default per location, enabled), max five (the database enforces it), credential shown as "set in Vault" / "set in environment" / "not found" — never the value, **Test connection** (`provider.testConnection()`), the webhook URL to paste into the N-Genius portal (`/api/webhooks/ngenius?token=<providers.webhook_token>`) with Copy and Regenerate. Pattern: `settings/desks/{page,actions}.tsx`.
+- [ ] Settings → Audit log: last 200 `pay.audit_log` rows with actor name, entity, action, reason, a before/after summary; filter by entity. (Settings → Apps is done.)
+- [ ] `/transactions`: show refund state from the webhook path; provider portal deep links (`provider.portalUrl`).
 
 ## Phase 6 — Hardening and hand-over
 
