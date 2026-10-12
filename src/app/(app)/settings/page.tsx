@@ -27,6 +27,7 @@ async function counts() {
     '/settings/users': `${n(users)} active ${n(users) === 1 ? 'account' : 'accounts'}`,
     '/settings/providers': `${n(providers)} of 5 enabled`,
     '/settings/apps': `${n(apps)} tiles`,
+    '/settings/audit': 'Last 200 changes',
   } as Record<string, string>
 }
 

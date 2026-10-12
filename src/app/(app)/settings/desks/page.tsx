@@ -7,7 +7,7 @@ import { Field, SubmitButton, inputClass } from '@/components/forms'
 import { ActionForm } from '../_components/action-form'
 import { ConfirmSubmit, Disclosure } from '../_components/confirm'
 import { SettingsBreadcrumb } from '../_components/settings-nav'
-import { CopyButton } from './copy-button'
+import { CopyButton } from '../_components/copy-button'
 import { addDesk, renameDesk, rotateDisplayKey, setDeskActive } from './actions'
 import type { Desk, Location } from '@/lib/types'
 

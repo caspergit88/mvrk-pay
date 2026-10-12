@@ -54,11 +54,12 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [ ] Still to do here: refund state surfaced from webhooks on the list (Check already records it); provider portal deep links.
 - [ ] **Check-in 3 (David):** add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Vercel and a finance email per location (Settings → Locations), close one real day and check the slip against the Network portal.
 
-## Phase 5 — Providers and settings (next — hand-over point to Claude Code)
+## Phase 5 — Providers and settings (in progress — Claude Code)
 
-- [ ] Settings → Payment providers: add/edit (location, kind, name, outlet reference, live/sandbox, default per location, enabled), max five (the database enforces it), credential shown as "set in Vault" / "set in environment" / "not found" — never the value, **Test connection** (`provider.testConnection()`), the webhook URL to paste into the N-Genius portal (`/api/webhooks/ngenius?token=<providers.webhook_token>`) with Copy and Regenerate. Pattern: `settings/desks/{page,actions}.tsx`.
-- [ ] Settings → Audit log: last 200 `pay.audit_log` rows with actor name, entity, action, reason, a before/after summary; filter by entity. (Settings → Apps is done.)
+- [x] Settings → Payment providers: grouped by location; add/edit (location fixed once added, type, name, outlet reference, live/sandbox — the realm follows it, credential name, enabled, default per location — the old default is cleared first); max five shown and enforced by the database; credential shown as "Set in Vault" / "Set in environment" / "Not found" (`credentialStatus` looks without returning the value; "Vault not checked here" where there is no service-role key); **Test connection** (`provider.testConnection()` with the cached key dropped first; the outcome, never the token, goes to the audit log as `test_connection`); the webhook URL for the N-Genius portal with Copy and Regenerate (two-step confirm; the old URL is refused at once). No migration needed.
+- [x] Settings → Audit log: last 200 `pay.audit_log` rows, newest first, actor name (or System), entity and row name, a before/after summary (`lib/audit.ts`, unit-tested; keys and links show as "changed", never their value), reason; filter by entity.
 - [ ] `/transactions`: show refund state from the webhook path; provider portal deep links (`provider.portalUrl`).
+- Note: `providers_read` lets reception read its own location's providers, `webhook_token` included. Low risk (the webhook only triggers a re-check against Network), but a column grant or view could hide it — a candidate for a later migration.
 
 ## Phase 6 — Hardening and hand-over
 

@@ -24,12 +24,17 @@ export const SETTINGS_SECTIONS = [
   {
     href: '/settings/providers',
     label: 'Payment providers',
-    blurb: 'Network today; up to five. Arrives in Phase 5.',
+    blurb: 'Network today; up to five. Credentials, Test connection, the webhook URL.',
   },
   {
     href: '/settings/apps',
     label: 'Apps',
     blurb: 'The tiles on the launcher, and which roles see each one.',
+  },
+  {
+    href: '/settings/audit',
+    label: 'Audit log',
+    blurb: 'Every change, who made it and when. Nobody can edit it.',
   },
 ]
 

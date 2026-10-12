@@ -40,3 +40,37 @@ export async function resolveCredential(ref: string | null | undefined, provider
   memo.set(ref, { value, at: Date.now() })
   return value
 }
+
+/** Drop a cached key, so Test connection uses the one in Vault right now. */
+export function forgetCredential(ref: string | null | undefined) {
+  if (ref) memo.delete(ref)
+}
+
+export type CredentialStatus = {
+  source: 'vault' | 'env' | 'missing' | 'unnamed'
+  /** False when there is no service-role key here, so Vault could not be asked. */
+  vaultChecked: boolean
+}
+
+/**
+ * Where a provider's key would come from — for Settings, which says
+ * "set in Vault" / "set in environment" / "not found" and nothing more. The
+ * value is looked at only to see that it is there, and is not returned.
+ */
+export async function credentialStatus(ref: string | null | undefined): Promise<CredentialStatus> {
+  if (!ref) return { source: 'unnamed', vaultChecked: false }
+  let vaultChecked = false
+  try {
+    const service = createServiceClient()
+    const { data, error } = await db(service).rpc('read_secret', { p_name: ref })
+    if (!error) {
+      vaultChecked = true
+      if (typeof data === 'string' && data.trim()) return { source: 'vault', vaultChecked }
+    }
+  } catch {
+    // No service role here: Vault cannot be asked.
+  }
+  const env = process.env[ref]
+  if (env && env.trim()) return { source: 'env', vaultChecked }
+  return { source: 'missing', vaultChecked }
+}
