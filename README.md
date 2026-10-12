@@ -6,7 +6,7 @@ Built the same way as the weddings app (Next.js 15, Supabase, Vercel) and kept a
 
 ## Status
 
-Phase 1 of 6 (plan, conventions, data model) is done and waiting for check-in 1 — see `docs/PLAN.md`. The app code starts in Phase 2. Until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (deployed at `mvrk-qr-desk.dormies.workers.dev`), which this build replaces.
+Phase 1 of 6 (plan, conventions, data model) is done and check-in 1 has passed: the `pay` schema is live in the shared Supabase project — see `docs/PLAN.md`. The app code starts in Phase 2. Until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (deployed at `mvrk-qr-desk.dormies.workers.dev`), which this build replaces.
 
 ## What is here
 
@@ -33,10 +33,6 @@ psql -v ON_ERROR_STOP=1 -d mvrkpay -f supabase/tests/acceptance.sql
 
 Every test prints `PASS`; any failure raises and stops. The shim stands in for Supabase's `auth` schema and roles; never run it on a real project.
 
-## Applying to the real project (Phase 2)
+## The real project
 
-1. Supabase dashboard → Settings → API → **Exposed schemas** → add `pay`.
-2. `cp .env.example .env.local`, fill in the four Supabase values (same as the weddings app's).
-3. `npm run setup:db` (dry run), then `npm run setup:db -- --commit --admin-email david@mvrkhq.com --admin-name "David"`.
-
-The setup script tracks applied migrations in `pay._migrations`, separate from the weddings app's tracker.
+The `pay` schema is already applied to the shared Supabase project and exposed on its Data API (12 Oct 2026). Future migrations go in `supabase/migrations/` and are applied either through the dashboard SQL editor (with the matching `pay._migrations` row) or by `npm run setup:db` for anyone holding `DATABASE_URL`; the tracker is `pay._migrations`, separate from the weddings app's.

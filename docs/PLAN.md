@@ -2,7 +2,7 @@
 
 Status of the build against `BRIEF.md`. Updated at every step; the check-ins are where David reviews.
 
-## Phase 1 — Read and plan · **done, awaiting check-in 1**
+## Phase 1 — Read and plan · **done; check-in 1 passed**
 
 - [x] Weddings repo read (`../../riah-weddings` @ `59924f3`): stack, auth, settings, cron, email, migrations, UI kit, voice.
 - [x] Reference Worker copied to `reference/mvrk-qr-desk/` (27 end-to-end tests, mock gateway, screens).
@@ -11,12 +11,19 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [x] Data model as migration drafts: `supabase/migrations/0001_schema.sql`, `0002_functions.sql`, `0003_rls.sql`, `0004_seed.sql`, plus `supabase/tests/acceptance.sql` skeleton.
 - [x] `.env.example`, `README.md`, `.gitignore`.
 
-**Check-in 1 asks David for:** (1) the Supabase project's URL, anon key, service-role key and database connection string (same ones the weddings app uses — `.env.local` of that repo); (2) a one-click dashboard change: Settings → API → Exposed schemas → add `pay`; (3) an empty private GitHub repo `mvrk-pay` so the code can be pushed; (4) the weddings app's URL for the launcher tile (can come later, it is a settings row).
+**Check-in 1 — done 12 Oct 2026, evening:**
+
+- [x] GitHub repo `caspergit88/mvrk-pay` created by David; Phase 1 pushed to `main`.
+- [x] Migrations 0001–0004 applied to the shared Supabase project (`rsjjsrpjwxuxuvoysiwx`, "Weddings App") through the dashboard SQL editor; `pay._migrations` records all four with their content hashes, so `npm run setup:db` will skip them. Verified live: 13 tables with RLS, 26 functions, 19 policies, 4 locations, 4 desks, 1 provider, `desk_state` in the realtime publication.
+- [x] `pay` added to Data API → Exposed schemas (David's approval). Verified from a browser with the publishable key: `rpc/location_for_domain` answers, anon cannot read `locations` directly (RLS), `display_snapshot` refuses a wrong key with 403.
+- [x] Project URL and publishable key in `.env.local` (public values). Still with David, for Vercel only: service-role key, `CRON_SECRET`, Resend keys, N-Genius key.
+- [ ] Weddings app URL for the launcher tile — a Settings → Apps row, whenever convenient.
 
 ## Phase 2 — Foundation · next
 
 - [ ] `create-next-app` with the weddings options (TypeScript, Tailwind v4, App Router, `@/*` alias, ESLint), copy `globals.css`, fonts, `ui.tsx`, `forms.tsx`, `supabase/*`, `auth.ts`, `format.ts`, `middleware.ts`, `scripts/setup-database.ts` (tracker table → `pay._migrations`).
-- [ ] Apply migrations 0001–0004 to the shared project; create the admin login with `npm run setup:db -- --commit --admin-email …`.
+- [x] Migrations 0001–0004 applied (check-in 1). 
+- [ ] Create the admin login (`npm run setup:db -- --commit --admin-email …` once the service-role key is in Vercel, or Settings → Users from a first admin created by hand).
 - [ ] Sign-in: domain check (client + server + DB), location chip, password, "Who are you?" step with staff name + PIN, `pay.sessions` row with 22:00 expiry, Switch person, sign out.
 - [ ] Launcher `/apps` (admin), header "Apps" link.
 - [ ] Settings: Locations, Desks (display link + regenerate key), Staff (names, PIN, order), Users (create with password, role, location, reset, deactivate, lock-out guard), Apps.
