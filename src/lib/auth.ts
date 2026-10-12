@@ -57,6 +57,28 @@ export async function currentSession(): Promise<Session | null> {
   return row && row.session_id ? row : null
 }
 
+/**
+ * The same checks as requireProfile, for API routes: null instead of a
+ * redirect, so the route can answer 401 and the screen can show why.
+ */
+export async function apiProfile(): Promise<(Profile & { session: Session }) | null> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: profile } = await db(supabase)
+    .from('profiles')
+    .select('id, email, full_name, role, location_id, active, must_change_password')
+    .eq('id', user.id)
+    .maybeSingle()
+  const p = profile as Profile | null
+  if (!p || !p.active || p.must_change_password) return null
+  const session = await currentSession()
+  if (!session) return null
+  return { ...p, session }
+}
+
 export async function requireRole(...roles: AppRole[]) {
   const profile = await requireProfile()
   if (!roles.includes(profile.role)) redirect('/no-access')

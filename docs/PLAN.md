@@ -32,13 +32,16 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [ ] **David:** create the Vercel project with the four environment variables (`DEPLOYMENT.md` §1), then the first admin login (§2). Until then nothing can sign in.
 - [ ] Placeholders at `/pay`, `/transactions`, `/report` are filled by Phases 3–4.
 
-## Phase 3 — Payments
+## Phase 3 — Payments · **built 12 Oct; check-in 2 needs the deployed app and the N-Genius key**
 
-- [ ] `lib/providers`: interface, `ngenius.ts` (port of `reference/.../ngenius.js`: token cache + 30 s backoff, HTML-error detection, orders, status, summarize), `mock.ts`, stubs `getpayin.ts` / `nomod.ts` / `stripe.ts` with READMEs; `credentials.ts` (Vault by name → env fallback).
-- [ ] `pay.open_order`, `pay.apply_provider_status`, `pay.clear_desk`; `/api/desks/[desk]/{state,check,orders,clear,recent-check}`; de-duplicated server-side status checks; webhooks `/api/webhooks/ngenius` (verify, then fetch the order).
-- [ ] Staff screen (`/`), customer display (`/display/[desk]`, Realtime + polling fallback, wake lock, Wi-Fi screen), `/thanks` and `/cancelled` with e-receipt box, Recent with Check, late-payment handling.
-- [ ] Mock gateway for local/CI; Playwright: login, take payment → display green, clear/replace, check, declined attempt, outage.
-- *Check-in 2: live €1 payment on the euro outlet with the display turning green.*
+- [x] `lib/providers`: interface, Network adapter ported from the Worker (token cache + 30 s backoff, HTML-error detection, orders, status, summarize), `mock` kind (the N-Genius mock gateway), stubs for Getpayin/Nomod/Stripe with `README.providers.md`, credentials from Vault (`pay.read_secret`) with env fallback.
+- [x] `lib/payments`: open order → provider → `pay.open_order`; de-duplicated status checks → `pay.apply_provider_status`; clear (with one last check so a just-paid code is never called unpaid); Realtime broadcast per desk.
+- [x] Routes: `/api/desks/[desk]/{state,orders,check,clear}` (staff session), `/api/display/[location]/[desk]/{state,check}` (desk key), `/api/transactions/[id]/check`, `/api/webhooks/ngenius?token=…` (verifies the per-provider token, then asks Network — never trusts the body).
+- [x] Screens: `/pay` (amount, note, KiteHub booking #, Show QR with second-tap replace, live status, Copy link / Check now / Clear / New payment, Recent with Check, display link + Wi-Fi line); `/display/[location]/[desk]?key=` (idle / code / paid 15 s / expired 8 s / Wi-Fi screen with auto-return, wake lock, Realtime + polling, `?demo=1`); `/thanks` and `/cancelled` (look the order up and ask the provider).
+- [x] Migration 0006 (views under RLS, `read_secret`, `desk_for_display`, 3-arg `display_snapshot`, `desk_snapshot`, `webhook_token`) — applied to the shared project.
+- [x] Checks: 49 database tests, 4 adapter tests against the mock gateway (`npm run test:unit`), typecheck, lint, build; the display verified in demo mode.
+- [ ] **Check-in 2 (David):** deploy (`DEPLOYMENT.md`), add the N-Genius key as a Supabase Vault secret named `NGENIUS_API_KEY` (Integrations → Vault → Add secret), sign in, open the display on an iPad, take a live €1 payment. Then register the webhook URL shown in Settings → Payment providers in the N-Genius portal.
+- [ ] E-receipt box on the thank-you page and late-payment flagging on reports land with Phase 4's email work.
 
 ## Phase 4 — Finance
 

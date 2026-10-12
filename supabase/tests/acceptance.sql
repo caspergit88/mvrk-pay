@@ -187,6 +187,31 @@ begin
   perform pg_temp.assert_raises(format($q$select pay.reopen_day('%s', '%s', 'because')$q$, loc, pay.business_date_for(loc)), 'reception cannot re-open a day');
   perform pay.apply_provider_status(t1.id, 'PURCHASED', true, false, 0, 'MC', '1111', null);
   perform pg_temp.assert((select late from pay.transactions where id = t1.id), 'a payment landing after the close is flagged late');
+
+  -- 0006: the staff screen's snapshot, the display addressed by location + desk, views under RLS
+  snap := pay.desk_snapshot(d);
+  perform pg_temp.assert(jsonb_array_length(snap -> 'recent') = 2 and (snap -> 'current') is not null, 'desk_snapshot carries today''s recent list');
+  perform pg_temp.assert_raises(format($q$select pay.desk_snapshot('%s')$q$, (select id from pay.desks where location_id = (select id from pay.locations where slug = 'riah') limit 1)), 'desk_snapshot refuses another location''s desk');
+  snap := pay.display_snapshot('kitepeople', 'desk-1', (select display_key from pay.desks where id = d));
+  perform pg_temp.assert(snap ->> 'deskId' = d::text, 'display_snapshot by location and desk slug');
+  perform pg_temp.assert_raises($q$select pay.display_snapshot('riah', 'desk-1', 'nope')$q$, 'display_snapshot with the wrong key is refused');
+  perform pg_temp.assert(pay.read_secret('NGENIUS_API_KEY') is null, 'read_secret is null where there is no Vault (local)');
+end $$;
+
+-- Views obey RLS: reception at KitePeople cannot see Riah's transactions through v_transactions.
+do $$
+declare
+  u uuid := (select id from pay.profiles where email = 'reception@kitepeople.com');
+  n int;
+begin
+  perform set_config('request.jwt.claim.sub', u::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u, 'session_id', gen_random_uuid())::text, true);
+  perform set_config('role', 'authenticated', true);
+  select count(*) into n from pay.v_transactions where location_id <> pay.my_location();
+  perform pg_temp.assert(n = 0, 'v_transactions shows reception only their own location');
+  select count(*) into n from pay.v_transactions;
+  perform pg_temp.assert(n = 2, 'and does show their own');
+  perform set_config('role', 'postgres', true);
 end $$;
 
 rollback;

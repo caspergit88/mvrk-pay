@@ -10,14 +10,18 @@
     "typecheck": "tsc --noEmit",
     "setup:db": "tsx scripts/setup-database.ts",
     "test:db": "bash scripts/test-db.sh",
-    "test:e2e": "playwright test"
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:e2e": "playwright test",
+    "mock:gateway": "node scripts/mock-ngenius.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "next": "15.5.24",
+    "qrcode-generator": "^1.4.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

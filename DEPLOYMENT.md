@@ -15,7 +15,9 @@ The database side is already done; what remains is the Vercel project and its en
    | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → *Legacy* tab → `service_role` (secret; same value the weddings app uses) |
    | `CRON_SECRET` | any long random string, e.g. `openssl rand -base64 32` |
 
-   Phase 3 adds the N-Genius key; Phase 4 adds `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
+   Phase 4 adds `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
+
+   The **N-Genius API key** does not go in Vercel: add it in Supabase → Integrations → Vault → **Add new secret**, name `NGENIUS_API_KEY`, value = the key from the N-Genius portal (Settings → Integrations → Service account). The provider row in `pay.providers` names that secret, so the app finds it; a different name per location is fine as long as the row says so. (`DEFAULT_PAYER_EMAIL` in Vercel is optional — Network needs an email on every order; it defaults to payments@mvrk.ae.)
 3. Deploy. The URL is `mvrk-pay-….vercel.app` until `pay.mvrk.ae` is pointed at it (Settings → Domains; Vercel shows the DNS record to add).
 
 ## 2. First admin login
