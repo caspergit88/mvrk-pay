@@ -13,3 +13,5 @@ create or replace function auth.jwt() returns jsonb language sql stable as $$ se
 do $$ begin
   if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then create publication supabase_realtime; end if;
 end $$;
+create schema if not exists storage;
+create table if not exists storage.buckets (id text primary key, name text not null, public boolean not null default false);

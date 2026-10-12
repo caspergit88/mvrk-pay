@@ -1,6 +1,7 @@
 import { db } from '@/lib/supabase/db'
 import { checkTransaction, serviceOrNull } from '@/lib/payments'
 import { money } from '@/lib/format'
+import { ReceiptForm } from './receipt-form'
 
 type Outcome = 'paid' | 'pending' | 'failed' | 'cancelled' | 'unknown'
 
@@ -17,7 +18,7 @@ const COPY: Record<Outcome, { title: string; message: string; tone: string; icon
  * appends ?ref=<order reference>; we look the order up (service role — there
  * is no login on a customer's phone), ask the provider, and say what happened.
  */
-export async function Outcome({ ref, cancelled }: { ref: string; cancelled: boolean }) {
+export async function Outcome({ orderRef: ref, cancelled }: { orderRef: string; cancelled: boolean }) {
   let outcome: Outcome = cancelled ? 'cancelled' : 'unknown'
   let amount = ''
   let brand = 'MVRK'
@@ -53,6 +54,7 @@ export async function Outcome({ ref, cancelled }: { ref: string; cancelled: bool
         <h1 className="text-2xl font-semibold">{c.title}</h1>
         <p className="mt-2 text-[17px] leading-relaxed text-[#cbd5e1]">{c.message}</p>
         {amount && <div className="mt-4 text-xl font-bold">{amount}</div>}
+        {outcome === 'paid' && ref && <ReceiptForm orderRef={ref} />}
       </div>
     </div>
   )

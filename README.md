@@ -6,7 +6,7 @@ Built the same way as the weddings app (Next.js 15, Supabase, Vercel) and kept a
 
 ## Status
 
-Phases 1–3 of 6 are built: the `pay` schema is live in the shared Supabase project; the app has sign-in (domain rule, name + PIN, 22:00 expiry), the launcher, Settings, the payment screen, the customer display and the Network adapter. It is waiting for its Vercel project and the N-Genius key (`DEPLOYMENT.md`) for a first live payment. Until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (`mvrk-qr-desk.dormies.workers.dev`), which this build replaces. Progress: `docs/PLAN.md`.
+Phases 1–4 of 6 are built: the `pay` schema is live in the shared Supabase project; the app has sign-in (domain rule, name + PIN, 22:00 expiry), the launcher, Settings, the payment screen, the customer display, the Network adapter, the end-of-day report (A4 and 80 mm slip, PDF, email), the nightly close, the transaction list with CSV export, and e-receipts. It is waiting for its Vercel project and the N-Genius key (`DEPLOYMENT.md`) for a first live payment. Until then the live version is the Cloudflare Worker in `reference/mvrk-qr-desk/` (`mvrk-qr-desk.dormies.workers.dev`), which this build replaces. Progress: `docs/PLAN.md`.
 
 ## What is here
 
@@ -17,8 +17,8 @@ Phases 1–3 of 6 are built: the `pay` schema is live in the shared Supabase pro
 | `docs/PLAN.md` | Phases, what is done, what is next, what each check-in needs |
 | `docs/DECISIONS.md` | Decisions taken between check-ins and how to reverse them |
 | `supabase/migrations/` | The `pay` schema: tables, functions, RLS, seed — proven on a scratch Postgres |
-| `supabase/tests/acceptance.sql` | 49 database acceptance tests; one transaction, rolls back (`npm run test:db`) |
-| `tests/unit/` | The Network adapter against the mock gateway (`npm run test:unit`) |
+| `supabase/tests/acceptance.sql` | 63 database acceptance tests; one transaction, rolls back (`npm run test:db`) |
+| `tests/unit/` | The Network adapter against the mock gateway; the report text, PDF and CSV (`npm run test:unit`) |
 | `src/` | The Next.js app (App Router); `docs/CONVENTIONS.md` says where things go |
 | `DEPLOYMENT.md` | Vercel project, environment variables, first admin login |
 | `reference/mvrk-qr-desk/` | The working Cloudflare Worker this app ports (screens, Network client, 27 end-to-end tests) |
@@ -30,7 +30,7 @@ npm install
 cp .env.example .env.local      # fill in the Supabase values (DEPLOYMENT.md)
 npm run dev                     # http://localhost:3000
 npm run typecheck && npm run lint && npm run build
-npm run test:unit               # the Network adapter against the mock gateway
+npm run test:unit               # the Network adapter against the mock gateway, the report text/PDF/CSV
 npm run test:e2e                # Playwright, against a running app (E2E_BASE_URL); login tests need E2E_EMAIL/E2E_PASSWORD
 npm run mock:gateway            # a stand-in N-Genius on :9876 for local payments (provider kind "mock")
 ```

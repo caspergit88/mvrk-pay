@@ -28,16 +28,29 @@ test('an outside domain is refused before any password is asked for', async ({ p
 })
 
 test('the launcher, settings and payment screens all need a session', async ({ page }) => {
-  for (const path of ['/apps', '/settings', '/settings/users', '/who', '/transactions']) {
+  for (const path of ['/apps', '/settings', '/settings/users', '/who', '/transactions', '/report', '/report/pdf?date=2026-01-01', '/transactions/export?from=2026-01-01&to=2026-01-31']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/sign-in/)
   }
 })
 
-test('the nightly job refuses to run without its secret', async ({ request }) => {
-  const res = await request.get('/api/cron/expire-sessions')
-  // 401 with a secret configured, 503 in production without one, 200 only in development.
-  expect([401, 503, 200]).toContain(res.status())
+test('the scheduled jobs refuse to run without their secret', async ({ request }) => {
+  for (const path of ['/api/cron/nightly', '/api/cron/expire-sessions']) {
+    const res = await request.get(path)
+    // 401 with a secret configured, 503 in production without one, 200 only in development.
+    expect([401, 503, 200]).toContain(res.status())
+    if (res.status() !== 200) expect((await res.json()).ok).toBe(false)
+  }
+  const wrong = await request.get('/api/cron/nightly', { headers: { Authorization: 'Bearer not-the-secret' } })
+  expect([401, 503, 200]).toContain(wrong.status())
+})
+
+test('the thank-you page offers nothing without a reference and does not crash', async ({ page }) => {
+  await page.goto('/thanks')
+  await expect(page.getByText('Thank you')).toBeVisible()
+  await expect(page.getByLabel('Email me a receipt')).toHaveCount(0)
+  await page.goto('/cancelled')
+  await expect(page.getByText('Payment cancelled')).toBeVisible()
 })
 
 test.describe('with a reception login', () => {

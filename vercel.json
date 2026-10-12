@@ -2,11 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/expire-sessions",
+      "path": "/api/cron/nightly",
       "schedule": "5 19 * * *"
     },
     {
-      "path": "/api/cron/expire-sessions",
+      "path": "/api/cron/nightly",
       "schedule": "5 20 * * *"
     }
   ]

@@ -99,3 +99,39 @@ table {
     padding: 0 !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The day report prints two ways: A4 (the tables as laid out) and an 80 mm
+   slip (the monospace text block, like the card terminal's). The slip is
+   hidden on screen and on A4; body.print-receipt (set by the Print button)
+   swaps them.
+   --------------------------------------------------------------------------- */
+.receipt-only {
+  display: none;
+}
+@media print {
+  body.print-receipt .report > *:not(.receipt-only) {
+    display: none !important;
+  }
+  body.print-receipt .receipt-only {
+    display: block;
+    width: 72mm;
+    font-size: 9pt;
+  }
+  body.print-receipt {
+    margin: 0;
+  }
+  @page {
+    margin: 10mm;
+  }
+  /* The 80 mm page size itself is set by the Print (slip) button, which adds a
+     one-line <style> for the duration of the print — @page cannot be scoped
+     to a body class in CSS. */
+  .report table {
+    font-size: 9pt;
+  }
+  .report .rounded-xl {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}

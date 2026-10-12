@@ -214,4 +214,49 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
+-- 0007: the report function, the unresolved list, which locations are due for the nightly close
+do $$
+declare
+  kp uuid := (select id from pay.locations where slug = 'kitepeople');
+  riah uuid := (select id from pay.locations where slug = 'riah');
+  today date := pay.business_date_for((select id from pay.locations where slug = 'kitepeople'));
+  u uuid := (select id from pay.profiles where email = 'reception@kitepeople.com');
+  r jsonb; n int; dc_id uuid;
+begin
+  -- as reception at KitePeople
+  perform set_config('request.jwt.claim.sub', u::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u, 'session_id', gen_random_uuid())::text, true);
+  r := pay.report_data(kp, today);
+  perform pg_temp.assert(jsonb_array_length(r -> 'lines') = 2, 'report_data lists the day''s two codes');
+  perform pg_temp.assert((r -> 'totals' -> 0 ->> 'paid_count')::int = 2 and (r -> 'totals' -> 0 ->> 'paid_minor')::int = 1750, 'report_data totals: both codes paid, 17.50');
+  perform pg_temp.assert((r -> 'close' ->> 'close_number') is not null and (r -> 'close' ->> 'closed_by_name') is not null, 'report_data carries the close and who closed it');
+  perform pg_temp.assert(jsonb_array_length(r -> 'byCashier') = 1 and (r -> 'byCashier' -> 0 ->> 'cashier_name') = 'Anna', 'report_data groups by person');
+  perform pg_temp.assert(r -> 'desks' = '["desk-1"]'::jsonb, 'report_data names the desks');
+  perform pg_temp.assert_raises(format($q$select pay.report_data('%s', '%s')$q$, riah, today), 'reception cannot pull another location''s report');
+  select count(*) into n from pay.unresolved_for_day(kp, today);
+  perform pg_temp.assert(n = 0, 'nothing is unresolved once both codes are paid');
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.assert((select paid_minor from pay.range_totals(null, today - 7, today)) = 1750, 'range_totals sums the week for the locations this person can see');
+  perform pay.note_audit('transactions', 'export_csv', '{"rows": 2}'::jsonb);
+  perform set_config('role', 'postgres', true);
+  perform pg_temp.assert(exists (select 1 from pay.audit_log where action = 'export_csv' and actor = u), 'note_audit records who exported');
+  select count(*) into n from pay.unresolved_for_day(riah, today);
+  perform pg_temp.assert(n = 0, 'unresolved_for_day shows reception nothing for another location');
+
+  -- as the service role (the nightly job)
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+  perform pg_temp.assert(pay.is_service(), 'is_service reads the role claim');
+  r := pay.report_data(riah, today);
+  perform pg_temp.assert(jsonb_array_length(r -> 'lines') = 0 and jsonb_typeof(r -> 'close') = 'null', 'the service role can read any location''s report (Riah: empty, not closed)');
+  update pay.locations set logout_time = '00:00' where id = riah;
+  perform pg_temp.assert(exists (select 1 from pay.locations_due_for_close() where location_id = riah), 'a location past its logout time with no close is due');
+  perform pg_temp.assert(not exists (select 1 from pay.locations_due_for_close() where location_id = kp), 'a location already closed today is not due');
+  select id into dc_id from pay.day_closes where location_id = kp and business_date = today;
+  perform pay.set_report_path(dc_id, 'kitepeople/test.pdf');
+  perform pg_temp.assert((select report_path from pay.day_closes where id = dc_id) = 'kitepeople/test.pdf', 'set_report_path records the PDF');
+  perform pg_temp.assert(exists (select 1 from storage.buckets where id = 'pay-reports' and not public), 'the pay-reports bucket exists and is private');
+  perform set_config('request.jwt.claims', '', true);
+end $$;
+
 rollback;

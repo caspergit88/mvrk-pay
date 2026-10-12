@@ -14,8 +14,10 @@ The database side is already done; what remains is the Vercel project and its en
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the publishable key from Supabase → Settings → API Keys (`sb_publishable_…`) |
    | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → *Legacy* tab → `service_role` (secret; same value the weddings app uses) |
    | `CRON_SECRET` | any long random string, e.g. `openssl rand -base64 32` |
+   | `RESEND_API_KEY` | Resend → API Keys (the weddings app's key works; sending only) |
+   | `RESEND_FROM_EMAIL` | a verified sender, e.g. `MVRK Pay <pay@mvrk.ae>` |
 
-   Phase 4 adds `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
+   Without the two Resend values the app still runs: end-of-day reports are stored as PDFs and shown on the report page, and the email is logged as "no provider" instead of sent; the "Email me a receipt" box tells the customer to ask the desk.
 
    The **N-Genius API key** does not go in Vercel: add it in Supabase → Integrations → Vault → **Add new secret**, name `NGENIUS_API_KEY`, value = the key from the N-Genius portal (Settings → Integrations → Service account). The provider row in `pay.providers` names that secret, so the app finds it; a different name per location is fine as long as the row says so. (`DEFAULT_PAYER_EMAIL` in Vercel is optional — Network needs an email on every order; it defaults to payments@mvrk.ae.)
 3. Deploy. The URL is `mvrk-pay-….vercel.app` until `pay.mvrk.ae` is pointed at it (Settings → Domains; Vercel shows the DNS record to add).
@@ -35,7 +37,9 @@ Then sign in at the Vercel URL, replace the password, and add the team under Set
 
 ## 3. Nightly job
 
-`vercel.json` schedules `/api/cron/expire-sessions` at 19:05 and 20:05 UTC (22:05 Cairo, winter and summer). Vercel sends `CRON_SECRET` automatically. Nothing to configure beyond the variable.
+`vercel.json` schedules `/api/cron/nightly` at 19:05 and 20:05 UTC (22:05 Cairo in summer and winter respectively; the other run finds nothing due). It signs everyone out, expires any code still on a display, and closes the day at every location that has not pressed End of day — the same close, marked automatic, with the PDF and the finance email. Vercel sends `CRON_SECRET` automatically; nothing to configure beyond the variable. To run it by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/nightly`.
+
+Each location's finance email is set in Settings → Locations; with none set, the day still closes and the report is on the report page.
 
 ## Future migrations
 

@@ -41,13 +41,18 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [x] Migration 0006 (views under RLS, `read_secret`, `desk_for_display`, 3-arg `display_snapshot`, `desk_snapshot`, `webhook_token`) — applied to the shared project.
 - [x] Checks: 49 database tests, 4 adapter tests against the mock gateway (`npm run test:unit`), typecheck, lint, build; the display verified in demo mode.
 - [ ] **Check-in 2 (David):** deploy (`DEPLOYMENT.md`), add the N-Genius key as a Supabase Vault secret named `NGENIUS_API_KEY` (Integrations → Vault → Add secret), sign in, open the display on an iPad, take a live €1 payment. Then register the webhook URL shown in Settings → Payment providers in the N-Genius portal.
-- [ ] E-receipt box on the thank-you page and late-payment flagging on reports land with Phase 4's email work.
+- [x] E-receipt box on the thank-you page and late-payment flagging on reports (Phase 4).
 
-## Phase 4 — Finance
+## Phase 4 — Finance (built)
 
-- [ ] `/report?date=…&location=…` with A4 and 80 mm print layouts; `pay.v_day_totals`.
-- [ ] End of day: check all open, confirm, `pay.close_day`, PDF to Storage (`pay-reports`), Resend email to the location's finance address; automatic close at 22:00 (`/api/cron/close-day`); re-open with reason (admin, finance).
-- [ ] `/transactions` for admin and finance with filters and CSV export; refund state from Check and webhook; provider portal deep links.
+- [x] Migration 0007: `pay.report_data` (lines, totals by provider and by person, the close, payments that landed today for earlier closed days), `pay.range_totals`, `pay.unresolved_for_day`, `pay.locations_due_for_close`, `pay.is_service`, `pay.note_audit`, `pay.set_report_path`, private Storage bucket `pay-reports` — applied to the shared project.
+- [x] `/report?date=…&location=…`: the terminal-style day report, Print (A4) and Print (80 mm slip), totals, by person, late payments, signature line; End of day (checks every unresolved code first, then `pay.close_day`, PDF to Storage, email to the location's finance address); Re-open with a reason (admin, finance); CSV link for the day.
+- [x] `/api/cron/nightly` (19:05 and 20:05 UTC = 22:05 Cairo in winter and summer): expire sessions, expire codes, close every location that is past its logout time and has no close yet — same code path as the button, `automatic = true` on the record. `/api/cron/expire-sessions` stays for a manual tidy-up.
+- [x] `/transactions`: every location (finance, admin) or their own (reception), filters for location, date range, status, person, reference, late-only; totals from the database; Re-check per unsettled code; `/transactions/export` CSV with the same filters, no row limit, logged to the audit trail.
+- [x] `lib/email.ts` (Resend, one fetch, `email_log` dedupe), `lib/report.ts` (text, PDF via pdf-lib, CSV). "Email me a receipt" on the thank-you page — paid orders only, one per address per order.
+- [x] Checks: 63 database tests, 7 unit tests (adapter, report text/PDF/CSV), Playwright (sign-in, protected routes incl. report and export, cron 401, thank-you page), typecheck, lint, build.
+- [ ] Still to do here: refund state surfaced from webhooks on the list (Check already records it); provider portal deep links.
+- [ ] **Check-in 3 (David):** add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Vercel and a finance email per location (Settings → Locations), close one real day and check the slip against the Network portal.
 
 ## Phase 5 — Providers and settings
 
