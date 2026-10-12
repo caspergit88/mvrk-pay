@@ -55,4 +55,4 @@ Never edit an applied migration; write the next one. Add acceptance tests for ev
 
 ## Next
 
-`docs/PLAN.md` → the rest of Phase 5 (refund state and portal links on `/transactions`) and Phase 6 (login rate limiting, admin email code, Playwright in CI, cut-over from the Worker). Check-ins 2 and 3 need David: Vercel project, Vault secret, first live €1, Resend values.
+`docs/PLAN.md` → Phase 6 (login rate limiting, admin email code, Playwright in CI, cut-over from the Worker). Check-ins 2 and 3 need David: Vercel project, Vault secret, first live €1, Resend values.

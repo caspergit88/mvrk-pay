@@ -51,14 +51,15 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [x] `/transactions`: every location (finance, admin) or their own (reception), filters for location, date range, status, person, reference, late-only; totals from the database; Re-check per unsettled code; `/transactions/export` CSV with the same filters, no row limit, logged to the audit trail.
 - [x] `lib/email.ts` (Resend, one fetch, `email_log` dedupe), `lib/report.ts` (text, PDF via pdf-lib, CSV). "Email me a receipt" on the thank-you page — paid orders only, one per address per order.
 - [x] Checks: 63 database tests, 7 unit tests (adapter, report text/PDF/CSV), Playwright (sign-in, protected routes incl. report and export, cron 401, thank-you page), typecheck, lint, build.
-- [ ] Still to do here: refund state surfaced from webhooks on the list (Check already records it); provider portal deep links.
+- [x] Refund state on the list and provider portal links — done in Phase 5.
 - [ ] **Check-in 3 (David):** add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Vercel and a finance email per location (Settings → Locations), close one real day and check the slip against the Network portal.
 
-## Phase 5 — Providers and settings (in progress — Claude Code)
+## Phase 5 — Providers and settings · **built 12–13 Oct by Claude Code; committed locally, not yet pushed**
 
 - [x] Settings → Payment providers: grouped by location; add/edit (location fixed once added, type, name, outlet reference, live/sandbox — the realm follows it, credential name, enabled, default per location — the old default is cleared first); max five shown and enforced by the database; credential shown as "Set in Vault" / "Set in environment" / "Not found" (`credentialStatus` looks without returning the value; "Vault not checked here" where there is no service-role key); **Test connection** (`provider.testConnection()` with the cached key dropped first; the outcome, never the token, goes to the audit log as `test_connection`); the webhook URL for the N-Genius portal with Copy and Regenerate (two-step confirm; the old URL is refused at once). No migration needed.
 - [x] Settings → Audit log: last 200 `pay.audit_log` rows, newest first, actor name (or System), entity and row name, a before/after summary (`lib/audit.ts`, unit-tested; keys and links show as "changed", never their value), reason; filter by entity.
-- [ ] `/transactions`: show refund state from the webhook path; provider portal deep links (`provider.portalUrl`).
+- [x] `/transactions`: a refunded row shows when the refund was seen and whether Network called it partial or a reversal; finance and admin get "Check for refund" on paid rows (the webhook path already re-checks paid orders) and a portal link per provider (`portalUrlFor`, no credential lookup — N-Genius has no per-order deep link, so the tooltip names the reference to search).
+- Gap: a partial refund is recorded as fully refunded (no refunded amount column), so totals overstate refunds for it. The row says so; a later migration could store the refunded amount from the order.
 - Note: `providers_read` lets reception read its own location's providers, `webhook_token` included. Low risk (the webhook only triggers a re-check against Network), but a column grant or view could hide it — a candidate for a later migration.
 
 ## Phase 6 — Hardening and hand-over

@@ -79,7 +79,7 @@ export class NGeniusProvider implements PaymentProvider {
     this.realm = s.realm ?? (env === 'sandbox' ? 'ni' : 'NetworkInternational')
     if (!s.outletRef) throw new ProviderError(`Provider "${row.name}" has no outlet reference in its settings.`, 500)
     this.outlet = s.outletRef
-    this.portal = s.portalUrl ?? 'https://portal.ngenius-payments.com'
+    this.portal = ngeniusPortal(s)
   }
 
   private async token(): Promise<string> {
@@ -221,4 +221,9 @@ export function summarize(order: Order): StatusResult {
   else if (PAID.has(rawState)) state = 'paid'
   else if (FAILED.has(rawState)) state = 'failed'
   return { state, rawState, failedAttempts, card, raw: order }
+}
+
+/** The N-Genius merchant portal for this outlet's settings; no key needed to know it. */
+export function ngeniusPortal(settings: NGeniusSettings): string {
+  return settings.portalUrl ?? 'https://portal.ngenius-payments.com'
 }

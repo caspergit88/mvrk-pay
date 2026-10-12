@@ -98,3 +98,9 @@ test('summarize reads the last attempt and counts the failed ones', () => {
   assert.equal(s.card?.last4, '4444')
   assert.equal(summarize({ reference: 'r', _embedded: { payment: [{ state: 'REFUNDED' }] } }).state, 'refunded')
 })
+
+test('the portal link needs no key: the live portal unless the row names another', async () => {
+  const { ngeniusPortal } = await import('../../src/lib/providers/ngenius')
+  assert.equal(ngeniusPortal({}), 'https://portal.ngenius-payments.com')
+  assert.equal(ngeniusPortal({ portalUrl: 'https://portal.sandbox.ngenius-payments.com' }), 'https://portal.sandbox.ngenius-payments.com')
+})

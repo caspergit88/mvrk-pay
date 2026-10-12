@@ -7,6 +7,7 @@ import { Card, EmptyState, ErrorState, Flag, Note, PageHeader, Stat, StatusChip,
 import { Field, inputClass } from '@/components/forms'
 import { STATUSES, filtersToQuery, listQuery, readFilters } from './_lib/filters'
 import { RecheckButton } from './recheck-button'
+import { portalUrlFor, type ProviderRow } from '@/lib/providers'
 import type { DisplayStatus, Location } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -37,6 +38,16 @@ type Row = {
   paid_at: string | null
   late: boolean
   failed_attempts: number
+  provider_id: string
+  provider_state: string
+  refunded_at: string | null
+}
+
+/** The provider's own word, for a refund: Network marks partial refunds and reversals separately. */
+function refundKind(providerState: string): string | null {
+  if (providerState === 'PARTIALLY_REFUNDED') return 'Partly refunded — the amount is in the provider’s portal'
+  if (providerState === 'REVERSED') return 'Reversed before settlement'
+  return null
 }
 
 type Totals = { currency: string; paid_count: number; paid_minor: number; refunded_count: number; refunded_minor: number; not_confirmed_count: number }
@@ -58,12 +69,15 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const filters = readFilters(params, (mine ?? locations[0])?.timezone)
   if (mine) filters.location = mine.id
 
-  const [list, totals] = await Promise.all([
+  const [list, totals, providers] = await Promise.all([
     listQuery(supabase, filters, LIMIT),
     db(supabase).rpc('range_totals', { p_location: filters.location, p_from: filters.from, p_to: filters.to }),
+    db(supabase).from('providers').select('id, kind, settings'),
   ])
   if (list.error) return <ErrorState message={list.error.message} />
   const rows = (list.data ?? []) as unknown as Row[]
+  const portals = new Map(((providers.data ?? []) as Pick<ProviderRow, 'id' | 'kind' | 'settings'>[]).map((p) => [p.id, portalUrlFor(p)]))
+  const seesPortal = me.role !== 'reception'
   const sums = (totals.data ?? []) as Totals[]
   const query = filtersToQuery(filters)
   const unresolved = rows.filter((r) => r.display_status === 'Waiting' || r.display_status === 'Declined' || r.display_status === 'Not confirmed')
@@ -170,7 +184,23 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   </Td>
                   <Td>
                     <div className="font-mono text-xs">{r.merchant_ref}</div>
-                    <div className="text-xs text-stone-500">{r.provider_name}</div>
+                    <div className="text-xs text-stone-500">
+                      {r.provider_name}
+                      {seesPortal && portals.get(r.provider_id) && (
+                        <>
+                          {' · '}
+                          <a
+                            href={portals.get(r.provider_id)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`Opens the provider's portal. Search there for ${r.merchant_ref}.`}
+                            className="underline hover:text-stone-800"
+                          >
+                            portal ↗
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </Td>
                   <Td>{r.cashier_name}</Td>
                   <Td>
@@ -180,6 +210,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   <Td className="whitespace-nowrap text-right font-semibold tabular-nums">{money(r.amount_minor, r.currency)}</Td>
                   <Td>
                     <StatusChip status={r.display_status} />
+                    {r.display_status === 'Refunded' && (
+                      <div className="mt-1 text-xs text-stone-500">
+                        {r.refunded_at && <div>seen {dateTime(r.refunded_at, r.timezone)}</div>}
+                        {refundKind(r.provider_state) && <div className="text-amber-800">{refundKind(r.provider_state)}</div>}
+                      </div>
+                    )}
                     {r.late && (
                       <div className="mt-1">
                         <Flag tone="warn">after close</Flag>
@@ -187,7 +223,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                     )}
                   </Td>
                   <Td className="whitespace-nowrap text-xs">{r.card_last4 ? `${r.card_scheme ?? ''} ····${r.card_last4}` : ''}</Td>
-                  <Td>{r.display_status !== 'Paid' && r.display_status !== 'Refunded' && <RecheckButton id={r.id} />}</Td>
+                  <Td>
+                    {r.display_status === 'Paid' ? (
+                      // A refund made in the portal arrives by webhook; this catches one that did not.
+                      seesPortal && <RecheckButton id={r.id} label="Check for refund" />
+                    ) : (
+                      r.display_status !== 'Refunded' && <RecheckButton id={r.id} />
+                    )}
+                  </Td>
                 </tr>
               ))}
             </Table>

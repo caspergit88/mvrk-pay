@@ -1,5 +1,5 @@
 import 'server-only'
-import { NGeniusProvider } from './ngenius'
+import { NGeniusProvider, ngeniusPortal } from './ngenius'
 import { resolveCredential } from './credentials'
 import { getpayin, nomod, stripe } from './stubs'
 import { ProviderError, type PaymentProvider, type ProviderRow } from './types'
@@ -27,4 +27,13 @@ export async function providerFor(row: ProviderRow): Promise<PaymentProvider> {
     default:
       throw new ProviderError(`Unknown provider kind "${row.kind}".`, 500)
   }
+}
+
+/**
+ * Where finance looks a payment up in the provider's own portal, from the row
+ * alone — no credential lookup, so the transaction list can show it cheaply.
+ * Null when the provider has no portal (the mock) or no adapter yet.
+ */
+export function portalUrlFor(row: Pick<ProviderRow, 'kind' | 'settings'>): string | null {
+  return row.kind === 'ngenius' ? ngeniusPortal(row.settings) : null
 }

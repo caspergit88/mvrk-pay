@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 /** Ask the provider about one code again and refresh the list with the answer. */
-export function RecheckButton({ id }: { id: string }) {
+export function RecheckButton({ id, label = 'Re-check' }: { id: string; label?: string }) {
   const router = useRouter()
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
@@ -36,7 +36,7 @@ export function RecheckButton({ id }: { id: string }) {
         disabled={state === 'busy'}
         className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
       >
-        {state === 'busy' ? 'Checking…' : 'Re-check'}
+        {state === 'busy' ? 'Checking…' : label}
       </button>
       {message && <div className={`mt-1 max-w-[12rem] text-xs ${state === 'error' ? 'text-red-700' : 'text-stone-500'}`}>{message}</div>}
     </div>

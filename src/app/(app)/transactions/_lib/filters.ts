@@ -56,7 +56,7 @@ export function filtersToQuery(f: Filters): string {
 }
 
 export const LIST_COLUMNS =
-  'id, created_at, business_date, location_id, location_name, timezone, desk_slug, merchant_ref, provider_ref, provider_name, cashier_name, note, booking_ref, amount_minor, currency, status, closed_reason, display_status, card_scheme, card_last4, paid_at, late, failed_attempts'
+  'id, created_at, business_date, location_id, location_name, timezone, desk_slug, merchant_ref, provider_ref, provider_name, cashier_name, note, booking_ref, amount_minor, currency, status, closed_reason, display_status, card_scheme, card_last4, paid_at, late, failed_attempts, provider_id, provider_state, refunded_at'
 
 /** The filtered rows, newest first. RLS limits the rows to what the person may see. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
