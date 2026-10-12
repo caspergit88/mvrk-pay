@@ -29,7 +29,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, build and the databa
 
 ## Migrations
 
-`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0007 are live in the shared project. A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
+`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0007 are live in the shared project; 0008 (login protection) is written and tested but not yet applied — DEPLOYMENT.md §4. A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
 
 ```sql
 insert into pay._migrations (name, sha256) values ('0008_name.sql', '<sha256sum of the file>');

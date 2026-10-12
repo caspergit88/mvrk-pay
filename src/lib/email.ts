@@ -19,6 +19,9 @@ export type EmailMessage = {
   text: string
   html?: string
   attachments?: { filename: string; content: Buffer; contentType: string }[]
+  /** What the log keeps instead of the subject and text, when those carry a secret (a sign-in code). */
+  logSubject?: string
+  logText?: string
   dedupeKey: string
 }
 
@@ -45,8 +48,8 @@ export async function sendEmail(client: SupabaseClient<any, any, any>, message: 
         kind: message.kind,
         location_id: message.locationId ?? null,
         to_addresses: to,
-        subject: message.subject,
-        body: message.text,
+        subject: message.logSubject ?? message.subject,
+        body: message.logText ?? message.text,
         attachment_path: message.attachments?.map((a) => a.filename).join(', ') ?? null,
         dedupe_key: message.dedupeKey,
       },

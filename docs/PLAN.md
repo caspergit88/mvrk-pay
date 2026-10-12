@@ -64,6 +64,8 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 
 ## Phase 6 — Hardening and hand-over
 
-- [ ] Login rate limiting, admin email one-time code.
+- [x] Login rate limiting and the admin email one-time code — migration 0008 (`login_attempts`, `admin_codes`, four service-role-only functions, 22 acceptance tests), `lib/login-guard.ts`, `/sign-in/code`. Five wrong passwords per email or twenty per network in 15 minutes; admin code six digits, once, 10 minutes, five tries, five sends per sign-in; neither the code nor its hash reaches the audit or email log. Switches on by itself once the service-role key and Resend are set; safe to deploy before the migration (DEPLOYMENT.md §4).
+- [ ] **David:** apply 0008 to the shared project (DEPLOYMENT.md §4) before or with the Phase 6 deploy.
+- Known limit, for David to decide: RLS trusts the Supabase login, not `pay.sessions`, so the email code (like the 22:00 expiry) guards the app's screens; someone holding the admin password could still use the Data API directly. Closing that means `pay.is_admin()` also requiring a live session — a small migration, but it touches every policy, so it wants a deliberate check-in.
 - [ ] Playwright suite green in CI; README and DEPLOYMENT finished; `pay.mvrk.ae` DNS instructions; a week in parallel with the Cloudflare Worker; cut-over note.
 - *Check-in 3: hand-over.*

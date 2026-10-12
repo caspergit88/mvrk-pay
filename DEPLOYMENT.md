@@ -41,6 +41,20 @@ Then sign in at the Vercel URL, replace the password, and add the team under Set
 
 Each location's finance email is set in Settings → Locations; with none set, the day still closes and the report is on the report page.
 
+## 4. Login protection (migration 0008) — before deploying the Phase 6 code
+
+`supabase/migrations/0008_login_protection.sql` adds the sign-in limits and the admin email code. It is written and tested but **not yet applied** to the shared project. Apply it like the others: `npm run setup:db -- --commit`, or paste the file into the Supabase SQL editor and then
+
+```sql
+insert into pay._migrations (name, sha256) values ('0008_login_protection.sql', '260ae684e13403c615a0a693c76ed3dd562e3f825c4b532c9f58ca1fecbcc515');
+```
+
+What changes once it is in:
+
+- Five wrong passwords for one email lock that email for 15 minutes (a right password resets the count); twenty failures from one network lock that network for 15 minutes. The message says so; an admin can also reset the password in Settings → Users.
+- An **admin** signing in gets a six-digit code by email and enters it on the next screen. The code works once, for 10 minutes; "Send a new code" is there if it does not arrive. It only switches on when `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are all set — until then admin sign-in skips it and the audit log records `admin_code_skipped`. `ADMIN_EMAIL_CODE=off` in Vercel turns it off on purpose (e.g. if Resend is down).
+- Deploying the code before the migration is safe: the limits are simply not enforced and the admin code is skipped (both logged), so nobody is locked out.
+
 ## Future migrations
 
 New files in `supabase/migrations/` are applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or through the Supabase SQL editor with their `pay._migrations` row — see README.

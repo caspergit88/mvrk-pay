@@ -259,4 +259,62 @@ begin
   perform set_config('request.jwt.claims', '', true);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- 0008: login rate limits and the admin email code (service role only)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  i int; msg text; code text; code2 text;
+  boss uuid := gen_random_uuid();
+  desk_person uuid := (select id from pay.profiles where role = 'reception' limit 1);
+  sid uuid := gen_random_uuid();
+begin
+  perform pg_temp.assert(pay.login_allowed('anna@kitepeople.com', '10.0.0.1') is null, 'a first sign-in is allowed');
+  for i in 1..4 loop perform pay.login_note('anna@kitepeople.com', '10.0.0.1', false); end loop;
+  perform pg_temp.assert(pay.login_allowed('Anna@KitePeople.com ', '10.0.0.2') is null, 'four wrong passwords are still allowed (email compared in lower case)');
+  perform pay.login_note('anna@kitepeople.com', '10.0.0.1', false);
+  msg := pay.login_allowed('anna@kitepeople.com', '10.0.0.2');
+  perform pg_temp.assert(msg like 'Too many wrong passwords for this email%', 'the fifth wrong password blocks that email, from any address');
+  perform pg_temp.assert(pay.login_allowed('ben@kitepeople.com', '10.0.0.1') is null, 'another email on the same network is not blocked by one person''s mistakes');
+
+  insert into pay.login_attempts (at, email, ip, ok)
+  select now() - interval '20 minutes', 'old@kitepeople.com', '10.0.0.9', false from generate_series(1, 9);
+  perform pg_temp.assert(pay.login_allowed('old@kitepeople.com', '10.0.0.9') is null, 'failures older than 15 minutes no longer count');
+
+  for i in 1..20 loop perform pay.login_note('user' || i || '@kitepeople.com', '10.6.6.6', false); end loop;
+  perform pg_temp.assert(pay.login_allowed('fresh@kitepeople.com', '10.6.6.6') like 'Too many failed sign-ins from this network%', 'twenty failures from one address block that address');
+  perform pg_temp.assert(pay.login_allowed('fresh@kitepeople.com', '10.0.0.3') is null, 'and only that address');
+
+  -- The admin code
+  insert into auth.users (id, email) values (boss, 'ops@mvrkhq.com');
+  insert into pay.profiles (id, email, full_name, role) values (boss, 'ops@mvrkhq.com', 'Ops', 'admin');
+  perform pg_temp.assert_raises(format($q$select pay.issue_admin_code('%s', '%s')$q$, desk_person, gen_random_uuid()), 'reception never gets an admin code');
+  code := pay.issue_admin_code(boss, sid);
+  perform pg_temp.assert(code ~ '^[0-9]{6}$', 'the admin code is six digits');
+  perform pg_temp.assert((select code_hash from pay.admin_codes where session_id = sid) <> code, 'only a hash of the code is kept');
+  perform pg_temp.assert(not exists (select 1 from pay.audit_log where after::text like '%' || code || '%' and action like 'admin_code%'), 'the audit log never holds the code');
+  msg := pay.verify_admin_code(boss, sid, case when code = '000000' then '111111' else '000000' end);
+  perform pg_temp.assert(msg like 'That code is not right%', 'a wrong code is refused');
+  perform pg_temp.assert(pay.verify_admin_code(gen_random_uuid(), sid, code) like 'No code has been sent%', 'a code belongs to its admin');
+  perform pg_temp.assert(pay.verify_admin_code(boss, sid, ' ' || code || ' ') is null, 'the right code lets the admin in');
+  perform pg_temp.assert(pay.verify_admin_code(boss, sid, code) like 'That code has already been used%', 'a code works once');
+
+  code2 := pay.issue_admin_code(boss, sid);
+  for i in 1..5 loop perform pay.verify_admin_code(boss, sid, case when code2 = '000000' then '111111' else '000000' end); end loop;
+  perform pg_temp.assert(pay.verify_admin_code(boss, sid, code2) like 'Too many wrong codes%', 'five wrong codes lock that code, even the right one after');
+  update pay.admin_codes set expires_at = now() - interval '1 second', attempts = 0 where session_id = sid;
+  perform pg_temp.assert(pay.verify_admin_code(boss, sid, code2) like 'That code has expired%', 'an expired code is refused');
+  for i in 1..3 loop perform pay.issue_admin_code(boss, sid); end loop;
+  perform pg_temp.assert_raises(format($q$select pay.issue_admin_code('%s', '%s')$q$, boss, sid), 'no more than five codes per sign-in');
+
+  -- None of it is reachable with a user's or the public key.
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.assert_raises($q$select pay.login_note('x@kitepeople.com', '1.1.1.1', false)$q$, 'a signed-in user cannot record attempts (no locking others out)');
+  perform pg_temp.assert_raises(format($q$select pay.issue_admin_code('%s', '%s')$q$, boss, gen_random_uuid()), 'a signed-in user cannot issue themselves a code');
+  perform pg_temp.assert_raises('select count(*) from pay.admin_codes', 'a signed-in user cannot read the code table');
+  perform set_config('role', 'anon', true);
+  perform pg_temp.assert_raises($q$select pay.login_allowed('x@kitepeople.com', '1.1.1.1')$q$, 'the public key cannot probe the limits');
+  perform set_config('role', 'postgres', true);
+end $$;
+
 rollback;
