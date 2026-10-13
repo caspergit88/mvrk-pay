@@ -119,6 +119,12 @@ begin
   perform set_config('request.jwt.claim.sub', admin_id::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', admin_id, 'session_id', gen_random_uuid())::text, true);
 
+  -- 0009: a login alone is not an admin; the session (after the code step) is.
+  perform pg_temp.assert(not pay.is_admin() and not pay.is_finance(), 'an admin login without a live session has no admin or finance powers');
+  perform pg_temp.assert_raises($q$select pay.set_staff_pin(gen_random_uuid(), '1234')$q$, 'admin functions refuse a login with no session');
+  perform pay.start_session(null, null);
+  perform pg_temp.assert(pay.is_admin() and pay.is_finance(), 'once the session starts, the admin is an admin');
+
   insert into pay.staff (location_id, name) values (loc, 'Omar') returning id into s;
   perform pg_temp.assert((select has_pin from pay.staff_names where id = s) = false, 'staff_names shows no PIN yet and never the hash');
   perform pg_temp.assert_raises(format($q$select pay.set_staff_pin('%s', '12')$q$, s), 'a PIN must be four digits');
@@ -138,6 +144,11 @@ begin
   perform pg_temp.assert((select must_change_password from pay.profiles where id = admin_id) = false, 'password_changed clears the flag for the caller');
 
   perform pg_temp.assert_raises(format($q$update pay.profiles set role = 'finance' where id = '%s'$q$, admin_id), 'the only admin cannot be demoted');
+
+  -- After 22:00 the session has expired: the login alone no longer carries admin powers.
+  update pay.sessions set expires_at = now() - interval '1 second' where profile_id = admin_id;
+  perform pg_temp.assert(not pay.is_admin(), 'an expired session takes the admin powers with it');
+  update pay.sessions set expires_at = now() + interval '1 hour' where profile_id = admin_id;
 end $$;
 
 -- ---------------------------------------------------------------------------

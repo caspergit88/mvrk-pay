@@ -55,6 +55,14 @@ What changes once it is in:
 - An **admin** signing in gets a six-digit code by email and enters it on the next screen. The code works once, for 10 minutes; "Send a new code" is there if it does not arrive. It only switches on when `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are all set — until then admin sign-in skips it and the audit log records `admin_code_skipped`. `ADMIN_EMAIL_CODE=off` in Vercel turns it off on purpose (e.g. if Resend is down).
 - Deploying the code before the migration is safe: the limits are simply not enforced and the admin code is skipped (both logged), so nobody is locked out.
 
+**Then 0009** (`0009_admin_needs_a_session.sql`, after 0008), the same way, with
+
+```sql
+insert into pay._migrations (name, sha256) values ('0009_admin_needs_a_session.sql', 'e9eebe2179d7b79113c5a0d972048e1a3cd02ecd5f169f0887a3547ef561fe73');
+```
+
+It makes admin and finance powers in the database need a live session — the one that starts after the code (admin) or at sign-in (finance) and ends at 22:00 — so an admin password alone opens nothing, even outside the app. Apply it once the code from this branch is deployed; nothing else to set. If anything misbehaves after it (an admin or finance screen that suddenly shows nothing), signing out and in again fixes it for that person, and the migration can be reversed by running 0002's two original definitions of `pay.is_admin` and `pay.is_finance`.
+
 ## 5. pay.mvrk.ae
 
 1. Vercel → the `mvrk-pay` project → **Settings → Domains → Add** → `pay.mvrk.ae`. Vercel shows the record it wants — normally a **CNAME** `pay` → `cname.vercel-dns.com`.

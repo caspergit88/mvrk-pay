@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
+import { adminCodeRequired } from '@/lib/login-guard'
 import type { AppRole, Profile, Session } from '@/lib/types'
 
 /**
@@ -18,6 +19,8 @@ export async function requireProfile(): Promise<Profile & { session: Session }> 
   const session = await currentSession()
   if (!session) {
     if (profile.role === 'reception') redirect('/who')
+    // An admin who signed in but has not entered the emailed code yet goes back to it.
+    if (profile.role === 'admin' && adminCodeRequired()) redirect('/sign-in/code')
     // Admin and finance get their session at sign-in; a missing one means it
     // expired at 22:00. Sign them out cleanly rather than leaving a half-state.
     redirect('/auth/expired')
