@@ -55,6 +55,29 @@ What changes once it is in:
 - An **admin** signing in gets a six-digit code by email and enters it on the next screen. The code works once, for 10 minutes; "Send a new code" is there if it does not arrive. It only switches on when `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are all set — until then admin sign-in skips it and the audit log records `admin_code_skipped`. `ADMIN_EMAIL_CODE=off` in Vercel turns it off on purpose (e.g. if Resend is down).
 - Deploying the code before the migration is safe: the limits are simply not enforced and the admin code is skipped (both logged), so nobody is locked out.
 
+## 5. pay.mvrk.ae
+
+1. Vercel → the `mvrk-pay` project → **Settings → Domains → Add** → `pay.mvrk.ae`. Vercel shows the record it wants — normally a **CNAME** `pay` → `cname.vercel-dns.com`.
+2. Add that record wherever `mvrk.ae`'s DNS is managed. If that is Cloudflare, set the record to **DNS only** (grey cloud) so Vercel can issue the certificate.
+3. **During the parallel week** keep the Worker on its own address (`mvrk-qr-desk.dormies.workers.dev`). If `pay.mvrk.ae` is already attached to the Worker (Cloudflare → Workers → mvrk-qr-desk → Settings → Domains), leave it there and use the `….vercel.app` address for MVRK Pay until cut-over day.
+4. Once Vercel shows the domain as valid, open Settings → Payment providers **on the new address** and copy the webhook URL again — it is built from the address you are on.
+
+## 6. A week side by side, then cut-over
+
+The brief: keep the Cloudflare Worker untouched until MVRK Pay has handled a week of real payments.
+
+**The week.** Pick one location (KitePeople) to take its payments on MVRK Pay; the others stay on the Worker. Each evening, check MVRK Pay's day report against the N-Genius portal for that outlet — every portal payment should be on the report as Paid, with nothing Not confirmed left over. Anything that disagrees: Re-check the row, and tell Claude what you saw.
+
+**Cut-over day** (about 15 minutes, outside opening hours):
+
+1. In the N-Genius portal → Settings → Integrations → Webhooks: replace the webhook URL with the one from Settings → Payment providers (on `pay.mvrk.ae`, if the domain has moved).
+2. If `pay.mvrk.ae` pointed at the Worker: remove it from the Worker's domains, then do §5.
+3. On each desk's iPad, open that desk's link from Settings → Desks & displays and add it to the Home Screen again (the old icon opens the Worker).
+4. Sign every reception login in once on `pay.mvrk.ae`.
+5. Leave the Worker deployed but unused for another week as a fallback; then delete it in Cloudflare (Workers → mvrk-qr-desk → Settings → Delete). `reference/mvrk-qr-desk/` stays in this repo as the record of how it worked.
+
+**Rolling back** during the fallback week is the same steps in reverse: the iPads open the Worker's address again, and the Worker's webhook goes back into the N-Genius portal.
+
 ## Future migrations
 
 New files in `supabase/migrations/` are applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or through the Supabase SQL editor with their `pay._migrations` row — see README.

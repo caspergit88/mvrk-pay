@@ -11,12 +11,14 @@ npm install
 npm run dev                      # http://localhost:3000 — needs .env.local (public Supabase values are already there)
 npm run typecheck && npm run lint && npm run build
 npm run test:unit                # adapter against the mock gateway; report text/PDF/CSV
-npm run test:db                  # 63 acceptance tests on a scratch Postgres (PGHOST/PGUSER set; never a real project)
+npm run test:db                  # 85 acceptance tests on a scratch Postgres (PGHOST/PGUSER set; never a real project)
 npm run test:e2e                 # Playwright against a running app (E2E_BASE_URL); login tests need E2E_EMAIL/E2E_PASSWORD
 npm run mock:gateway             # stand-in N-Genius on :9876 (provider kind "mock")
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, build and the database tests on every push.
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, build and the database tests on every push, and Playwright against a production build.
+
+On Windows, `npm run test:unit` does not expand its glob (cmd); run `node --import tsx --conditions=react-server --test tests/unit/*.test.ts` from bash instead.
 
 ## Rules that are not negotiable
 
@@ -55,4 +57,4 @@ Never edit an applied migration; write the next one. Add acceptance tests for ev
 
 ## Next
 
-`docs/PLAN.md` → Phase 6 (login rate limiting, admin email code, Playwright in CI, cut-over from the Worker). Check-ins 2 and 3 need David: Vercel project, Vault secret, first live €1, Resend values.
+`docs/PLAN.md`: what is left is David's — the Vercel project, the Vault secret and first live €1 (check-in 2), Resend values, applying 0008, the CI variable and secrets, the week side by side and cut-over (DEPLOYMENT.md §4–6). Open questions for him are at the end of Phase 5 and Phase 6 in PLAN.md.

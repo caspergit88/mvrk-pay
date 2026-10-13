@@ -33,3 +33,36 @@ jobs:
           PGHOST: localhost
           PGUSER: postgres
           PGPASSWORD: postgres
+
+  e2e:
+    # The screens a signed-out visitor, the customer's phone and the scheduler
+    # can reach, against a production build. Tests that need Supabase run when
+    # the repository has the publishable key as a variable (Settings → Secrets
+    # and variables → Actions → Variables: NEXT_PUBLIC_SUPABASE_ANON_KEY), and
+    # the login test when E2E_EMAIL / E2E_PASSWORD are repository secrets.
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://rsjjsrpjwxuxuvoysiwx.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder' }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_PIN: ${{ secrets.E2E_PIN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Start the app
+        run: |
+          npm run start -- -H 127.0.0.1 -p 3000 > /tmp/app.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3000/sign-in && exit 0; sleep 1; done
+          cat /tmp/app.log; exit 1
+      - run: npx playwright test
+      - name: App log on failure
+        if: failure()
+        run: cat /tmp/app.log

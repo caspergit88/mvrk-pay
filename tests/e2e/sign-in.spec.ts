@@ -1,4 +1,18 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type APIRequestContext } from '@playwright/test'
+
+/**
+ * The domain lookup is a browser call to Supabase with the publishable key the
+ * app was built with. CI builds with a placeholder unless the repository has
+ * the real key as a variable, and some runners cannot reach Supabase at all;
+ * either way those tests skip rather than fail.
+ */
+async function supabaseUsable(request: APIRequestContext) {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+  if (!key.startsWith('sb_publishable_') && !key.startsWith('eyJ')) return false
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://rsjjsrpjwxuxuvoysiwx.supabase.co'
+  const probe = await request.get(`${url}/rest/v1/`, { headers: { apikey: key } }).catch(() => null)
+  return Boolean(probe && probe.status() > 0)
+}
 
 test('a signed-out visitor is sent to sign in', async ({ page }) => {
   await page.goto('/pay')
@@ -7,9 +21,7 @@ test('a signed-out visitor is sent to sign in', async ({ page }) => {
 })
 
 test('a team domain shows its location and reveals the password box', async ({ page, request }) => {
-  // The lookup is a browser call to Supabase; skip where that host is unreachable (some CI sandboxes).
-  const probe = await request.get(`${process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://rsjjsrpjwxuxuvoysiwx.supabase.co'}/rest/v1/`).catch(() => null)
-  test.skip(!probe || probe.status() === 0, 'Supabase not reachable from this runner')
+  test.skip(!(await supabaseUsable(request)), 'No real publishable key, or Supabase not reachable from this runner')
   await page.goto('/sign-in')
   await page.getByLabel('Email').fill('reception@kitepeople.com')
   await expect(page.getByText('KitePeople', { exact: true })).toBeVisible()
@@ -18,8 +30,7 @@ test('a team domain shows its location and reveals the password box', async ({ p
 })
 
 test('an outside domain is refused before any password is asked for', async ({ page, request }) => {
-  const probe = await request.get(`${process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://rsjjsrpjwxuxuvoysiwx.supabase.co'}/rest/v1/`).catch(() => null)
-  test.skip(!probe || probe.status() === 0, 'Supabase not reachable from this runner')
+  test.skip(!(await supabaseUsable(request)), 'No real publishable key, or Supabase not reachable from this runner')
   await page.goto('/sign-in')
   await page.getByLabel('Email').fill('someone@gmail.com')
   await expect(page.getByText("This email isn't on an MVRK team domain")).toBeVisible()
@@ -28,7 +39,7 @@ test('an outside domain is refused before any password is asked for', async ({ p
 })
 
 test('the launcher, settings and payment screens all need a session', async ({ page }) => {
-  for (const path of ['/apps', '/settings', '/settings/users', '/who', '/transactions', '/report', '/report/pdf?date=2026-01-01', '/transactions/export?from=2026-01-01&to=2026-01-31']) {
+  for (const path of ['/apps', '/settings', '/settings/users', '/settings/providers', '/settings/audit', '/sign-in/code', '/who', '/transactions', '/report', '/report/pdf?date=2026-01-01', '/transactions/export?from=2026-01-01&to=2026-01-31']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/sign-in/)
   }
