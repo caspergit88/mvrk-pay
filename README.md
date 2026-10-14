@@ -17,7 +17,7 @@ Phases 1–5 are built and Phase 6 is mostly done: the `pay` schema (0001–0007
 | `docs/PLAN.md` | Phases, what is done, what is next, what each check-in needs |
 | `docs/DECISIONS.md` | Decisions taken between check-ins and how to reverse them |
 | `supabase/migrations/` | The `pay` schema: tables, functions, RLS, seed — proven on a scratch Postgres |
-| `supabase/tests/acceptance.sql` | 85 database acceptance tests; one transaction, rolls back (`npm run test:db`) |
+| `supabase/tests/acceptance.sql` | 89 database acceptance tests; one transaction, rolls back (`npm run test:db`) |
 | `tests/unit/` | The Network adapter against the mock gateway; the report text, PDF and CSV; the audit summary; the login guard (`npm run test:unit`) |
 | `src/` | The Next.js app (App Router); `docs/CONVENTIONS.md` says where things go |
 | `DEPLOYMENT.md` | Vercel project, environment variables, first admin login, migration 0008, `pay.mvrk.ae`, the parallel week and cut-over |
