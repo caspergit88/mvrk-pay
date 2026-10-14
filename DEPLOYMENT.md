@@ -43,7 +43,7 @@ Each location's finance email is set in Settings → Locations; with none set, t
 
 ## 4. Login protection (migration 0008) — before deploying the Phase 6 code
 
-`supabase/migrations/0008_login_protection.sql` adds the sign-in limits and the admin email code. It is written and tested but **not yet applied** to the shared project. Apply it like the others: `npm run setup:db -- --commit`, or paste the file into the Supabase SQL editor and then
+`supabase/migrations/0008_login_protection.sql` adds the sign-in limits and the admin email code. Applied to the shared project on 14 Oct 2026, with 0009 below; kept here for the record and for a fresh project. Apply it like the others: `npm run setup:db -- --commit`, or paste the file into the Supabase SQL editor and then
 
 ```sql
 insert into pay._migrations (name, sha256) values ('0008_login_protection.sql', '260ae684e13403c615a0a693c76ed3dd562e3f825c4b532c9f58ca1fecbcc515');

@@ -31,7 +31,7 @@ On Windows, `npm run test:unit` does not expand its glob (cmd); run `node --impo
 
 ## Migrations
 
-`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0007 are live in the shared project; 0008 (login protection) and 0009 (admin and finance need a live session) are written and tested but not yet applied — DEPLOYMENT.md §4. A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
+`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0009 are live in the shared project (0008 login protection and 0009 admin/finance need a live session applied 14 Oct 2026). A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
 
 ```sql
 insert into pay._migrations (name, sha256) values ('0008_name.sql', '<sha256sum of the file>');
@@ -57,4 +57,4 @@ Never edit an applied migration; write the next one. Add acceptance tests for ev
 
 ## Next
 
-`docs/PLAN.md`: what is left is David's — the Vercel project, the Vault secret and first live €1 (check-in 2), Resend values, applying 0008, the CI variable and secrets, the week side by side and cut-over (DEPLOYMENT.md §4–6). Open questions for him are at the end of Phase 5 and Phase 6 in PLAN.md.
+`docs/PLAN.md`: what is left is David's — the Vault secret and first live €1 (check-in 2), Resend values, the CI variable and secrets, the week side by side and cut-over (DEPLOYMENT.md §4–6). Open questions for him are at the end of Phase 5 and Phase 6 in PLAN.md.

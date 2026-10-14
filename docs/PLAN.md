@@ -29,7 +29,7 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 - [x] Migration 0005 (staff_names view, set_staff_pin, rotate_display_key, password_changed, end_session, desk → desk_state trigger) — applied to the shared project and recorded.
 - [x] Cron `/api/cron/expire-sessions` (+ expires stale codes), `vercel.json` at 19:05 and 20:05 UTC.
 - [x] Checks: typecheck, lint, production build, 40 database acceptance tests, Playwright for the public flow (domain tests run where Supabase is reachable). CI workflow runs all of it on push.
-- [ ] **David:** create the Vercel project with the four environment variables (`DEPLOYMENT.md` §1), then the first admin login (§2). Until then nothing can sign in.
+- [x] Vercel project `mvrk-pay` live at https://mvrk-pay.vercel.app (13 Oct); first admin login `david@mvrkhq.com` created and signed in (14 Oct).
 - [ ] Placeholders at `/pay`, `/transactions`, `/report` are filled by Phases 3–4.
 
 ## Phase 3 — Payments · **built 12 Oct; check-in 2 needs the deployed app and the N-Genius key**
@@ -65,9 +65,9 @@ Status of the build against `BRIEF.md`. Updated at every step; the check-ins are
 ## Phase 6 — Hardening and hand-over
 
 - [x] Login rate limiting and the admin email one-time code — migration 0008 (`login_attempts`, `admin_codes`, four service-role-only functions, 22 acceptance tests), `lib/login-guard.ts`, `/sign-in/code`. Five wrong passwords per email or twenty per network in 15 minutes; admin code six digits, once, 10 minutes, five tries, five sends per sign-in; neither the code nor its hash reaches the audit or email log. Switches on by itself once the service-role key and Resend are set; safe to deploy before the migration (DEPLOYMENT.md §4).
-- [ ] **David:** apply 0008 to the shared project (DEPLOYMENT.md §4) before or with the Phase 6 deploy.
+- [x] 0008 applied to the shared project, 14 Oct 2026 (sign-in limits live; the admin code switches on with Resend).
 - [x] Closing that gap (branch `admin-session-guard`, for David's review): migration 0009 makes `pay.is_admin()` and `pay.is_finance()` also require the live `pay.sessions` row for the token's own session — written only after the code step (admin) or at sign-in (finance), removed at 22:00. So an admin password alone opens nothing, even through the Data API, and the 22:00 rule binds the database too. Reception is unchanged. 89 acceptance tests. An admin part-way through sign-in is sent back to the code screen instead of being signed out.
-- [ ] **David:** review and merge `admin-session-guard`, then apply 0009 after 0008 (DEPLOYMENT.md §4).
+- [x] `admin-session-guard` merged and 0009 applied, 14 Oct 2026 — checked on the live database: an admin login with a made-up session sees nothing; a live session has full admin access.
 - Deferred: partial refunds are recorded as full. Network's refund format is not in the Worker or the mock gateway, and money should not be built on a guess — build it against one real refunded order (refund the first live €1 in the portal).
 - [x] Playwright in CI: an `e2e` job builds the app, starts it and runs the suite (4 pass, 3 skip without a key — verified locally against a production build). Supabase-dependent tests run once the repo has `NEXT_PUBLIC_SUPABASE_ANON_KEY` as an Actions variable; the login test once `E2E_EMAIL` / `E2E_PASSWORD` (/ `E2E_PIN`) are Actions secrets.
 - [x] README and DEPLOYMENT finished: migration 0008 (§4), `pay.mvrk.ae` DNS (§5), the week side by side and the cut-over note with rollback (§6).
