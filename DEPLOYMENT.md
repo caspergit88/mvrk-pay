@@ -17,6 +17,8 @@ The database side is already done; what remains is the Vercel project and its en
    | `RESEND_API_KEY` | Resend → API Keys (the weddings app's key works; sending only) |
    | `RESEND_FROM_EMAIL` | a verified sender, e.g. `MVRK Pay <pay@mvrk.ae>` |
 
+   **Resend, as set up (21 Oct 2026):** MVRK Pay sends through the **riahkiteacademy** Resend team — the one the weddings app uses, where `riahkiteacademy.com` is verified — with its own key `mvrk-pay-vercel` (sending access, that domain only), from `MVRK Pay <pay@riahkiteacademy.com>`. The other Resend login (davidcassidy07) also lists `riahkiteacademy.com`, as *failed*: it cannot verify while the riahkiteacademy team owns the domain, and should not be "fixed" — claiming it there would stop the weddings app's email.
+
    Without the two Resend values the app still runs: end-of-day reports are stored as PDFs and shown on the report page, and the email is logged as "no provider" instead of sent; the "Email me a receipt" box tells the customer to ask the desk.
 
    The **N-Genius API key** does not go in Vercel: add it in Supabase → Integrations → Vault → **Add new secret**, name `NGENIUS_API_KEY`, value = the key from the N-Genius portal (Settings → Integrations → Service account). The provider row in `pay.providers` names that secret, so the app finds it; a different name per location is fine as long as the row says so. (`DEFAULT_PAYER_EMAIL` in Vercel is optional — Network needs an email on every order; it defaults to payments@mvrk.ae.)
