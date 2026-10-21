@@ -12,6 +12,7 @@
  *
  * Optionally creates the first admin login:
  *   npm run setup:db -- --commit --admin-email david@mvrkhq.com --admin-name "David"
+ * Forgotten admin password: add --reset-password for a new one-time password.
  * (needs SUPABASE_SERVICE_ROLE_KEY; the email must be on a team domain.)
  */
 
@@ -111,7 +112,7 @@ class UnusedRealtimeTransport {
   }
 }
 
-async function createAdmin(email: string, fullName: string) {
+async function createAdmin(email: string, fullName: string, resetPassword = false) {
   const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
   const serviceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
   const supabase = createClient(supabaseUrl, serviceKey, {
@@ -128,6 +129,16 @@ async function createAdmin(email: string, fullName: string) {
   if (already) {
     userId = already.id
     console.log(`\n  Auth user ${email} already exists (it may be a weddings login); reusing it.`)
+    if (resetPassword) {
+      // Break-glass for a forgotten admin password: a fresh one-time password,
+      // shown once here, to be changed at the next sign-in.
+      password = randomBytes(12).toString('base64url')
+      const { error } = await supabase.auth.admin.updateUserById(userId, { password })
+      if (error) {
+        console.error(`\n  Could not reset the password: ${error.message}`)
+        process.exit(1)
+      }
+    }
   } else {
     password = randomBytes(12).toString('base64url')
     const { data, error } = await supabase.auth.admin.createUser({
@@ -171,7 +182,7 @@ async function main() {
   const adminEmail = flag('admin-email')
   if (adminEmail) {
     if (!commit) console.log('\n  (Admin login is only created with --commit.)')
-    else await createAdmin(adminEmail, flag('admin-name') ?? 'Admin')
+    else await createAdmin(adminEmail, flag('admin-name') ?? 'Admin', args.includes('--reset-password'))
   }
   console.log()
 }

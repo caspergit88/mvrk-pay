@@ -35,6 +35,8 @@ npm run setup:db -- --commit --admin-email david@mvrkhq.com --admin-name "David"
 
 Then sign in at the Vercel URL, replace the password, and add the team under Settings → Users and Settings → Staff.
 
+**Forgotten admin password** (there is no other admin to reset it in Settings → Users): run the same command with `--reset-password` added. It prints a new one-time password, to be changed at the next sign-in; nothing else changes.
+
 ## 3. Nightly job
 
 `vercel.json` schedules `/api/cron/nightly` at 19:05 and 20:05 UTC (22:05 Cairo in summer and winter respectively; the other run finds nothing due). It signs everyone out, expires any code still on a display, and closes the day at every location that has not pressed End of day — the same close, marked automatic, with the PDF and the finance email. Vercel sends `CRON_SECRET` automatically; nothing to configure beyond the variable. To run it by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/nightly`.
