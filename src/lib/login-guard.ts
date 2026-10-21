@@ -1,4 +1,5 @@
 import 'server-only'
+import { randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
@@ -60,8 +61,74 @@ export async function noteLogin(email: string, ip: string, ok: boolean) {
  */
 export function adminCodeRequired(): boolean {
   if ((process.env.ADMIN_EMAIL_CODE ?? '').toLowerCase() === 'off') return false
+  return emailCodesAvailable()
+}
+
+/**
+ * Codes can be delivered: the service-role key (to issue them and open the
+ * session) and Resend (to send them). Until then sign-in is by password only.
+ */
+export function emailCodesAvailable(): boolean {
   const has = (k: string) => Boolean(process.env[k]?.trim())
   return has('SUPABASE_SERVICE_ROLE_KEY') && has('RESEND_API_KEY') && (has('RESEND_FROM_EMAIL') || has('RESEND_FROM'))
+}
+
+/**
+ * Email a sign-in code (migration 0010). Sends nothing, quietly, when the
+ * email has no active login — the page says the same either way. Throws with
+ * a message for people when the hourly allowance is used up or Resend fails.
+ */
+export async function sendLoginCode(email: string) {
+  const s = service()
+  if (!s) throw new Error('Sign-in codes need the service-role key on the server.')
+  const { data: code, error } = await db(s).rpc('issue_login_code', { p_email: email })
+  if (error) throw new Error(error.message)
+  if (typeof code !== 'string' || !code) return
+  const result = await sendEmail(s, {
+    kind: 'login_code',
+    to: [email],
+    subject: `${code} is your MVRK Pay sign-in code`,
+    text: `${code}\n\nThis is your MVRK Pay sign-in code. It works once, for the next 10 minutes.\n\nIf you did not just ask for it, you can ignore this email — nobody can sign in without the code.`,
+    logText: 'Sign-in code sent (the code itself is not kept).',
+    logSubject: 'MVRK Pay sign-in code',
+    dedupeKey: `login-code:${email}:${Date.now()}`,
+  })
+  if (!result.sent) throw new Error(`The code could not be emailed (${result.detail ?? result.reason}). Try again in a minute, or use a password.`)
+}
+
+/**
+ * Check a sign-in code and, when it is right, open a Supabase session for that
+ * email on `supabase` (the request's own client, so the session cookies are
+ * set on the response). Null on success, else what to tell the person.
+ *
+ * The session comes from a one-time link token minted with the service role
+ * and redeemed at once on the server; no link is ever emailed.
+ */
+export async function signInWithLoginCode(supabase: Client, email: string, code: string): Promise<string | null> {
+  const s = service()
+  if (!s) return 'Sign-in codes need the service-role key on the server.'
+  const { data: wrong, error } = await db(s).rpc('verify_login_code', { p_email: email, p_code: code })
+  if (error) return error.message
+  if (typeof wrong === 'string' && wrong) return wrong
+
+  const { data: link, error: linkError } = await s.auth.admin.generateLink({ type: 'magiclink', email })
+  const tokenHash = link?.properties?.hashed_token
+  if (linkError || !tokenHash) return `Sign-in did not complete (${linkError?.message ?? 'no token'}). Try again.`
+  const { error: otpError } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
+  if (otpError) return `Sign-in did not complete (${otpError.message}). Try again.`
+  return null
+}
+
+/**
+ * Someone who signs in by code no longer needs the starter password an admin
+ * gave them; replace it with one nobody knows, so it cannot be used later.
+ */
+export async function retireStarterPassword(userId: string) {
+  const s = service()
+  if (!s) return
+  const { error } = await s.auth.admin.updateUserById(userId, { password: randomBytes(24).toString('base64url') })
+  if (error) return
+  await db(s).from('profiles').update({ must_change_password: false }).eq('id', userId)
 }
 
 /** The Supabase session id in the signed-in person's verified token. */

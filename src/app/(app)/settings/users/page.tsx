@@ -4,6 +4,7 @@ import { db } from '@/lib/supabase/db'
 import { Card, EmptyState, ErrorState, Flag, Note, PageHeader } from '@/components/ui'
 import { Field, SubmitButton, inputClass } from '@/components/forms'
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, type Profile } from '@/lib/types'
+import { emailCodesAvailable } from '@/lib/login-guard'
 import { ActionForm } from '../_components/action-form'
 import { ConfirmSubmit, Disclosure } from '../_components/confirm'
 import { SettingsBreadcrumb } from '../_components/settings-nav'
@@ -16,6 +17,7 @@ type Row = Profile & { created_at: string; location: { name: string } | null }
 
 export default async function UsersPage() {
   const me = await requireSettingsAdmin()
+  const codes = emailCodesAvailable()
   const supabase = await createClient()
   const { data, error } = await db(supabase)
     .from('profiles')
@@ -45,8 +47,15 @@ export default async function UsersPage() {
               <Field label="Name" hint="For a shared reception login, the desk’s name is fine: “KitePeople reception”.">
                 <input name="full_name" type="text" required className={inputClass} />
               </Field>
-              <Field label="Starter password" hint="At least 10 characters. They type it once and then replace it.">
-                <input name="password" type="text" required minLength={10} autoComplete="off" className={inputClass} />
+              <Field
+                label={codes ? 'Starter password (optional)' : 'Starter password'}
+                hint={
+                  codes
+                    ? 'Leave blank: they sign in with a code emailed to them. Fill in only for someone who cannot get email.'
+                    : 'At least 10 characters. They type it once and then replace it.'
+                }
+              >
+                <input name="password" type="text" required={!codes} minLength={10} autoComplete="off" className={inputClass} />
               </Field>
               <Field label="Role">
                 <select name="role" defaultValue="reception" className={inputClass}>

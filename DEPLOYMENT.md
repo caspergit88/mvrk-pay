@@ -65,6 +65,14 @@ insert into pay._migrations (name, sha256) values ('0009_admin_needs_a_session.s
 
 It makes admin and finance powers in the database need a live session — the one that starts after the code (admin) or at sign-in (finance) and ends at 22:00 — so an admin password alone opens nothing, even outside the app. Apply it once the code from this branch is deployed; nothing else to set. If anything misbehaves after it (an admin or finance screen that suddenly shows nothing), signing out and in again fixes it for that person, and the migration can be reversed by running 0002's two original definitions of `pay.is_admin` and `pay.is_finance`.
 
+### Sign in with an emailed code (migration 0010)
+
+Once `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are in Vercel (and redeployed), the sign-in page offers **Email me a code** instead of a password box: everyone types their email, gets a six-digit code (once, 10 minutes, five tries, five codes an hour), and is in. A code sign-in proves the mailbox, so admins skip the second code. "Use a password instead" stays on the page as a fallback; if email is down, an admin can give someone a temporary password in Settings → Users. New users can be added without a password. Until Resend is set, sign-in stays as it is — password only. Apply 0010 like the others, tracker row:
+
+```sql
+insert into pay._migrations (name, sha256) values ('0010_sign_in_by_email_code.sql', '6faa4074143123bc328500df5cb3c0c2ba32301da11246690a980446d26bc9cb');
+```
+
 ## 5. pay.mvrk.ae
 
 1. Vercel → the `mvrk-pay` project → **Settings → Domains → Add** → `pay.mvrk.ae`. Vercel shows the record it wants — normally a **CNAME** `pay` → `cname.vercel-dns.com`.

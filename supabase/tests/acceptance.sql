@@ -328,4 +328,51 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- 0010: sign in with an emailed code (service role only)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  i int; code text; code2 text; msg text;
+  who text := (select email from pay.profiles where role = 'reception' and active limit 1);
+begin
+  perform pg_temp.assert(pay.issue_login_code('nobody@kitepeople.com') is null, 'no code for an email with no login (and nothing to say so)');
+  perform pg_temp.assert(not exists (select 1 from pay.login_codes where email = 'nobody@kitepeople.com'), 'and nothing is stored for it');
+
+  code := pay.issue_login_code(upper(who) || ' ');
+  perform pg_temp.assert(code ~ '^[0-9]{6}$', 'an active login gets a six-digit code (email matched in lower case)');
+  perform pg_temp.assert((select code_hash from pay.login_codes where email = who) <> code, 'only a hash of the sign-in code is kept');
+  perform pg_temp.assert(not exists (select 1 from pay.audit_log where after::text like '%' || code || '%' and action like 'login_code%'), 'the audit log never holds the sign-in code');
+
+  msg := pay.verify_login_code(who, case when code = '000000' then '111111' else '000000' end);
+  perform pg_temp.assert(msg like 'That code is not right%', 'a wrong sign-in code is refused');
+  perform pg_temp.assert(pay.verify_login_code('someone-else@kitepeople.com', code) like 'No code has been sent%', 'a code belongs to its email');
+  perform pg_temp.assert(pay.verify_login_code(who, code) is null, 'the right code signs in');
+  perform pg_temp.assert(pay.verify_login_code(who, code) like 'That code has already been used%', 'a sign-in code works once');
+
+  code2 := pay.issue_login_code(who);
+  for i in 1..5 loop perform pay.verify_login_code(who, case when code2 = '000000' then '111111' else '000000' end); end loop;
+  perform pg_temp.assert(pay.verify_login_code(who, code2) like 'Too many wrong codes%', 'five wrong sign-in codes lock that code');
+  update pay.login_codes set expires_at = now() - interval '1 second', attempts = 0 where email = who;
+  perform pg_temp.assert(pay.verify_login_code(who, code2) like 'That code has expired%', 'an expired sign-in code is refused');
+
+  -- two sent so far this hour; three more is the limit
+  for i in 1..3 loop perform pay.issue_login_code(who); end loop;
+  perform pg_temp.assert_raises(format($q$select pay.issue_login_code('%s')$q$, who), 'no more than five sign-in codes per email per hour');
+  update pay.login_codes set window_started = now() - interval '61 minutes' where email = who;
+  perform pg_temp.assert(pay.issue_login_code(who) ~ '^[0-9]{6}$', 'the hourly allowance starts again after an hour');
+
+  code := pay.issue_login_code(who);
+  update pay.profiles set active = false where email = who;
+  perform pg_temp.assert(pay.verify_login_code(who, code) like 'This login has been deactivated%', 'a code cannot sign in a login deactivated after it was sent');
+  update pay.profiles set active = true where email = who;
+
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.assert_raises(format($q$select pay.issue_login_code('%s')$q$, who), 'a signed-in user cannot ask for someone else''s code');
+  perform pg_temp.assert_raises('select count(*) from pay.login_codes', 'a signed-in user cannot read the sign-in codes');
+  perform set_config('role', 'anon', true);
+  perform pg_temp.assert_raises(format($q$select pay.verify_login_code('%s', '123456')$q$, who), 'the public key cannot try codes');
+  perform set_config('role', 'postgres', true);
+end $$;
+
 rollback;

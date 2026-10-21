@@ -9,12 +9,15 @@ export function SubmitButton({
   pendingLabel,
   disabled,
   title,
+  formAction,
 }: {
   children: ReactNode
   variant?: 'primary' | 'secondary' | 'danger'
   pendingLabel?: string
   disabled?: boolean
   title?: string
+  /** A different server action for this button than the form's own. */
+  formAction?: (formData: FormData) => void | Promise<void>
 }) {
   const { pending } = useFormStatus()
   const styles = {
@@ -27,6 +30,7 @@ export function SubmitButton({
     <button
       type="submit"
       title={title}
+      formAction={formAction}
       disabled={pending || disabled}
       className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${styles}`}
     >

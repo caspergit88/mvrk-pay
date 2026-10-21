@@ -11,7 +11,7 @@ npm install
 npm run dev                      # http://localhost:3000 — needs .env.local (public Supabase values are already there)
 npm run typecheck && npm run lint && npm run build
 npm run test:unit                # adapter against the mock gateway; report text/PDF/CSV
-npm run test:db                  # 89 acceptance tests on a scratch Postgres (PGHOST/PGUSER set; never a real project)
+npm run test:db                  # 106 acceptance tests on a scratch Postgres (PGHOST/PGUSER set; never a real project)
 npm run test:e2e                 # Playwright against a running app (E2E_BASE_URL); login tests need E2E_EMAIL/E2E_PASSWORD
 npm run mock:gateway             # stand-in N-Genius on :9876 (provider kind "mock")
 ```
@@ -31,7 +31,7 @@ On Windows, `npm run test:unit` does not expand its glob (cmd); run `node --impo
 
 ## Migrations
 
-`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0009 are live in the shared project (0008 login protection and 0009 admin/finance need a live session applied 14 Oct 2026). A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
+`supabase/migrations/NNNN_name.sql`, applied in order, tracked by content hash in `pay._migrations`. 0001–0010 are live in the shared project (0010, sign in by emailed code, 21 Oct 2026). A new migration is applied either by `npm run setup:db -- --commit` (needs `DATABASE_URL`) or by pasting the file into the Supabase SQL editor followed by its tracker row:
 
 ```sql
 insert into pay._migrations (name, sha256) values ('0008_name.sql', '<sha256sum of the file>');

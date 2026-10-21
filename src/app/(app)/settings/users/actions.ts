@@ -5,6 +5,8 @@ import { requireSettingsAdmin } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
 import { isRole, ROLE_LABELS } from '@/lib/types'
+import { emailCodesAvailable } from '@/lib/login-guard'
+import { randomBytes } from 'node:crypto'
 import { done, fail, type ActionState } from '../_lib/action-state'
 
 const PATH = '/settings/users'
@@ -77,7 +79,9 @@ export async function setUserActive(_prev: ActionState, formData: FormData): Pro
 }
 
 /**
- * Add a login with a password, in one step — the weddings app's way: no invite
+ * Add a login. With email codes on, no password is needed: the account gets
+ * one nobody knows and the person signs in by code. Otherwise (or for someone
+ * who cannot get email) a starter password, in one step — the weddings app's way: no invite
  * email to get lost, the person signs in at once and must replace the password
  * before seeing anything. The password reaches Supabase Auth and nowhere else.
  */
@@ -91,7 +95,8 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a valid email address — it is what they sign in with.')
   if (!fullName) return fail('Enter the person’s name so accounts can be told apart.')
   if (!isRole(role)) return fail('Pick a role from the list.')
-  if (password.length < 10) return fail('Use at least 10 characters for the password. They will change it on first sign-in.')
+  const byCode = password === '' && emailCodesAvailable()
+  if (!byCode && password.length < 10) return fail('Use at least 10 characters for the password. They will change it on first sign-in.')
 
   // The domain rule, before Auth is touched (the database enforces it again on the profile row).
   const supabase = await createClient()
@@ -108,7 +113,7 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
 
   const { data, error } = await service.auth.admin.createUser({
     email,
-    password,
+    password: byCode ? randomBytes(24).toString('base64url') : password,
     email_confirm: true,
     user_metadata: { full_name: fullName, app: 'mvrk-pay' },
   })
@@ -118,7 +123,7 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
 
   const { error: profileError } = await db(service)
     .from('profiles')
-    .insert({ id: userId, email, full_name: fullName, role, must_change_password: true })
+    .insert({ id: userId, email, full_name: fullName, role, must_change_password: !byCode })
   if (profileError) {
     // Do not leave an Auth user with no profile: it could sign in and see nothing useful.
     await service.auth.admin.deleteUser(userId)
@@ -126,7 +131,11 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
   }
 
   revalidatePath(PATH)
-  return done(`${fullName} can sign in now as ${ROLE_LABELS[role]}. Tell them the password in person; it only works once.`)
+  return done(
+    byCode
+      ? `${fullName} can sign in now as ${ROLE_LABELS[role]}: on the sign-in page, their email, then the code it sends them.`
+      : `${fullName} can sign in now as ${ROLE_LABELS[role]}. Tell them the password in person; it only works once.`,
+  )
 }
 
 /** A new starter password for someone who forgot theirs. */

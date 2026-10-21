@@ -4,19 +4,21 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { Field, FormError, SubmitButton, inputClass } from '@/components/forms'
+import { emailMeACode, signIn } from './actions'
 
 type Lookup = { state: 'idle' | 'checking' | 'ok' | 'refused' | 'offline'; name?: string }
 
 const ALLOWED_HINT = 'Logins use kitepeople.com, mvrkhq.com, waspoclub.com or riahkiteacademy.com.'
 
 /**
- * The email box, the location chip under it, and the password box that only
- * appears once the domain is one of ours. The real rule lives in the database;
- * this is so a reception desk never types a password into a form that is about
- * to be refused.
+ * The email box, the location chip under it, and — once the domain is one of
+ * ours — "Email me a code" (when codes are on) or the password box. The real
+ * rule lives in the database; this is so a reception desk never types a
+ * password into a form that is about to be refused.
  */
-export function EmailField({ initialEmail = '' }: { initialEmail?: string }) {
+export function EmailField({ initialEmail = '', codes = false, passwordFirst = false }: { initialEmail?: string; codes?: boolean; passwordFirst?: boolean }) {
   const [email, setEmail] = useState(initialEmail)
+  const [usePassword, setUsePassword] = useState(!codes || passwordFirst)
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' })
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latest = useRef('')
@@ -81,15 +83,30 @@ export function EmailField({ initialEmail = '' }: { initialEmail?: string }) {
         <p className="text-sm text-amber-700">Couldn’t check the address just now — carry on, it is checked again when you sign in.</p>
       )}
 
-      {recognised && (
-        <Field label="Password">
-          <input name="password" type="password" required autoComplete="current-password" className={inputClass} autoFocus />
-        </Field>
+      {usePassword ? (
+        <>
+          {recognised && (
+            <Field label="Password">
+              <input name="password" type="password" required autoComplete="current-password" className={inputClass} autoFocus />
+            </Field>
+          )}
+          <SubmitButton pendingLabel="Signing in…" disabled={!recognised} formAction={signIn}>
+            Sign in
+          </SubmitButton>
+        </>
+      ) : (
+        <SubmitButton pendingLabel="Sending…" disabled={!recognised} formAction={emailMeACode}>
+          Email me a code
+        </SubmitButton>
       )}
 
-      <SubmitButton pendingLabel="Signing in…" disabled={!recognised}>
-        Sign in
-      </SubmitButton>
+      {codes && (
+        <p className="text-xs text-stone-500">
+          <button type="button" onClick={() => setUsePassword((v) => !v)} className="underline hover:text-stone-800">
+            {usePassword ? 'Email me a code instead' : 'Use a password instead'}
+          </button>
+        </p>
+      )}
     </>
   )
 }

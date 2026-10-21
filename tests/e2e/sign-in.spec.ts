@@ -39,7 +39,7 @@ test('an outside domain is refused before any password is asked for', async ({ p
 })
 
 test('the launcher, settings and payment screens all need a session', async ({ page }) => {
-  for (const path of ['/apps', '/settings', '/settings/users', '/settings/providers', '/settings/audit', '/sign-in/code', '/who', '/transactions', '/report', '/report/pdf?date=2026-01-01', '/transactions/export?from=2026-01-01&to=2026-01-31']) {
+  for (const path of ['/apps', '/settings', '/settings/users', '/settings/providers', '/settings/audit', '/sign-in/code', '/sign-in/email-code', '/who', '/transactions', '/report', '/report/pdf?date=2026-01-01', '/transactions/export?from=2026-01-01&to=2026-01-31']) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/sign-in/)
   }
