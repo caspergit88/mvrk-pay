@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireProfile } from '@/lib/auth'
+import { payHomeFor, requireProfile } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
 import type { AppTile } from '@/lib/types'
@@ -38,7 +38,7 @@ export default async function AppsPage() {
           <ul className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:grid-cols-4">
             {tiles.map((t) => (
               <li key={t.id} className="flex flex-col items-center">
-                <Tile tile={t} />
+                <Tile tile={t.url === '/' ? { ...t, url: payHomeFor(profile.role) } : t} />
               </li>
             ))}
           </ul>

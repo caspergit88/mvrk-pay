@@ -104,6 +104,15 @@ export const canManageSettings = (role: AppRole) => role === 'admin'
 export const canSeeAllLocations = (role: AppRole) => role === 'admin' || role === 'finance'
 export const canTakePayments = (role: AppRole) => role === 'admin' || role === 'reception'
 
+/**
+ * The way into MVRK Pay itself for each role — what the launcher's MVRK Pay
+ * tile opens. Not homePathFor: an admin's home is the launcher, so a tile
+ * pointing there would go nowhere.
+ */
+export function payHomeFor(role: AppRole): string {
+  return role === 'finance' ? '/transactions' : '/pay'
+}
+
 /** Where each role lands after sign-in. */
 export function homePathFor(role: AppRole): string {
   if (role === 'admin') return '/apps'
