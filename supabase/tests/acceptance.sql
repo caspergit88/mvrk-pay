@@ -263,6 +263,16 @@ begin
   update pay.locations set logout_time = '00:00' where id = riah;
   perform pg_temp.assert(exists (select 1 from pay.locations_due_for_close() where location_id = riah), 'a location past its logout time with no close is due');
   perform pg_temp.assert(not exists (select 1 from pay.locations_due_for_close() where location_id = kp), 'a location already closed today is not due');
+  -- 0011: nothing to close where there is no desk and no money
+  update pay.desks set active = false where location_id = riah;
+  perform pg_temp.assert(not exists (select 1 from pay.locations_due_for_close() where location_id = riah), 'a location with no active desk and no payments that day is skipped by the nightly close');
+  insert into pay.transactions
+  select (jsonb_populate_record(null::pay.transactions, to_jsonb(t) || jsonb_build_object(
+    'id', gen_random_uuid(), 'location_id', riah, 'desk_id', (select id from pay.desks where location_id = riah limit 1),
+    'provider_ref', 'riah-close-test', 'merchant_ref', 'MP-RIAH-CLOSE-TEST'))).*
+  from pay.transactions t where t.location_id = kp limit 1;
+  perform pg_temp.assert(exists (select 1 from pay.locations_due_for_close() where location_id = riah), 'but a desk switched off after taking money that day still gets its day closed');
+  update pay.desks set active = true where location_id = riah;
   select id into dc_id from pay.day_closes where location_id = kp and business_date = today;
   perform pay.set_report_path(dc_id, 'kitepeople/test.pdf');
   perform pg_temp.assert((select report_path from pay.day_closes where id = dc_id) = 'kitepeople/test.pdf', 'set_report_path records the PDF');
