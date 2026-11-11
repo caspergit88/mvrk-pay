@@ -421,4 +421,80 @@ begin
   perform set_config('request.jwt.claims', '', true);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- 0013: the app gives each person on reception a desk of their own
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  riah uuid := (select id from pay.locations where slug = 'riah');
+  d1 uuid := (select id from pay.desks where location_id = (select id from pay.locations where slug = 'riah') and slug = 'desk-1');
+  d2 uuid;
+  a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); c uuid := gen_random_uuid();
+  sa uuid; sb uuid; sc uuid; sid_a uuid := gen_random_uuid(); sid_a2 uuid := gen_random_uuid(); sid_b uuid := gen_random_uuid(); sid_c uuid := gen_random_uuid();
+  ses pay.sessions; n int;
+begin
+  insert into pay.desks (location_id, slug, name) values (riah, 'desk-2', 'Desk 2') returning id into d2;
+  insert into pay.staff (location_id, name) values (riah, 'Anna R') returning id into sa;
+  insert into pay.staff (location_id, name) values (riah, 'Ben R') returning id into sb;
+  insert into pay.staff (location_id, name) values (riah, 'Cara R') returning id into sc;
+  insert into auth.users (id, email) values (a, 'anna@riahkiteacademy.com'), (b, 'ben@riahkiteacademy.com'), (c, 'cara@riahkiteacademy.com');
+  insert into pay.profiles (id, email, full_name, role, username, staff_id, must_change_password) values
+    (a, 'anna@riahkiteacademy.com', 'Anna R', 'reception', 'anna.r', sa, false),
+    (b, 'ben@riahkiteacademy.com', 'Ben R', 'reception', 'ben.r', sb, false),
+    (c, 'cara@riahkiteacademy.com', 'Cara R', 'reception', 'cara.r', sc, false);
+
+  perform set_config('request.jwt.claim.sub', a::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', a, 'session_id', sid_a)::text, true);
+  ses := pay.start_session(null, null);
+  perform pg_temp.assert(ses.desk_id = d1, 'the first person in gets Desk 1');
+
+  perform set_config('request.jwt.claim.sub', b::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', b, 'session_id', sid_b)::text, true);
+  ses := pay.start_session(null, null);
+  perform pg_temp.assert(ses.desk_id = d2, 'the next person gets Desk 2');
+
+  perform set_config('request.jwt.claim.sub', c::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', c, 'session_id', sid_c)::text, true);
+  ses := pay.start_session(null, null);
+  perform pg_temp.assert(ses.desk_id is null, 'with every desk taken, nobody is pushed off and the newcomer has no desk');
+  select count(*) into n from pay.desk_occupancy(riah) where staff_name is not null;
+  perform pg_temp.assert(n = 2, 'desk_occupancy says who is on which desk');
+
+  -- Anna again, in a new browser: she gets her own desk back, not Desk 2 or nothing
+  perform set_config('request.jwt.claim.sub', a::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', a, 'session_id', sid_a2)::text, true);
+  ses := pay.start_session(null, null);
+  perform pg_temp.assert(ses.desk_id = d1 and (select desk_id from pay.sessions where session_id = sid_a) is null, 'the same person signing in again gets their own desk back');
+
+  -- Ben signs out: Desk 2 is free, and Cara gets it when her screen asks
+  perform set_config('request.jwt.claim.sub', b::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', b, 'session_id', sid_b)::text, true);
+  perform pay.end_session();
+  perform set_config('request.jwt.claim.sub', c::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', c, 'session_id', sid_c)::text, true);
+  perform pg_temp.assert(pay.claim_my_desk() = d2, 'signing out frees the desk, and the next screen to ask is given it');
+
+  perform pg_temp.assert_raises(format($q$select pay.release_desk('%s')$q$, d1), 'reception cannot free somebody else''s desk');
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.assert_raises($q$select pay.assign_desk(gen_random_uuid())$q$, 'nobody signed in can call assign_desk directly');
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+end $$;
+
+-- the admin frees a desk
+do $$
+declare admin_id uuid := (select id from pay.profiles where email = 'david@mvrkhq.com'); sid uuid := gen_random_uuid();
+  d1 uuid := (select id from pay.desks where location_id = (select id from pay.locations where slug = 'riah') and slug = 'desk-1');
+begin
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', admin_id, 'session_id', sid)::text, true);
+  perform pay.start_session(null, null);
+  perform pg_temp.assert((select desk_id from pay.sessions where session_id = sid) is null, 'an admin gets no desk');
+  perform pay.release_desk(d1);
+  perform pg_temp.assert(not exists (select 1 from pay.sessions where desk_id = d1), 'an admin can free a desk someone left without signing out');
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+end $$;
+
 rollback;

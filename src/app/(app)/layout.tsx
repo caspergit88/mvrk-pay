@@ -13,14 +13,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await requireProfile()
   const supabase = await createClient()
 
-  const [{ data: location }, { data: staff }] = await Promise.all([
+  const [{ data: location }, { data: staff }, { data: desk }] = await Promise.all([
     profile.location_id
       ? db(supabase).from('locations').select('name').eq('id', profile.location_id).maybeSingle()
       : Promise.resolve({ data: null }),
     profile.session.staff_id
       ? db(supabase).from('staff_names').select('name').eq('id', profile.session.staff_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    profile.session.desk_id
+      ? db(supabase).from('desks').select('name').eq('id', profile.session.desk_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
+  const staffName = (staff as { name: string } | null)?.name ?? null
+  const deskName = (desk as { name: string } | null)?.name ?? null
 
   return (
     <>
@@ -28,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         role={profile.role}
         name={profile.full_name}
         locationName={(location as { name: string } | null)?.name ?? null}
-        cashierName={(staff as { name: string } | null)?.name ?? null}
+        cashierName={staffName && deskName ? `${staffName} · ${deskName}` : staffName}
         switchPerson={profile.role === 'reception' && !profile.staff_id ? switchPerson : undefined}
       />
       <main className="app-shell mx-auto max-w-6xl px-4 py-6">{children}</main>

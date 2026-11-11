@@ -8,7 +8,8 @@ import { ActionForm } from '../_components/action-form'
 import { ConfirmSubmit, Disclosure } from '../_components/confirm'
 import { SettingsBreadcrumb } from '../_components/settings-nav'
 import { CopyButton } from '../_components/copy-button'
-import { addDesk, renameDesk, rotateDisplayKey, setDeskActive } from './actions'
+import { addDesk, releaseDesk, renameDesk, rotateDisplayKey, setDeskActive } from './actions'
+import { timeOnly } from '@/lib/format'
 import type { Desk, Location } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,12 @@ export default async function DesksPage() {
     db(supabase).from('desks').select('*').order('slug'),
   ])
   const locs = (locations ?? []) as Pick<Location, 'id' | 'name' | 'slug' | 'active'>[]
+  // Who is on each desk right now (0013): the app gives reception a desk at sign-in.
+  const occupancy = new Map<string, { staff_name: string | null; since: string | null }>()
+  for (const l of locs.filter((x) => x.active)) {
+    const { data: occ } = await db(supabase).rpc('desk_occupancy', { p_location: l.id })
+    for (const o of (occ ?? []) as { desk_id: string; staff_name: string | null; since: string | null }[]) occupancy.set(o.desk_id, o)
+  }
   const all = (desks ?? []) as Desk[]
   const base = await origin()
 
@@ -40,7 +47,8 @@ export default async function DesksPage() {
 
       <div className="space-y-4">
         <Note>
-          The link carries the desk’s key. Anyone with it can watch that desk’s amounts and codes, nothing more — but if a link
+          Reception doesn’t choose a desk: the first person signed in at a location gets Desk 1, the next Desk 2. A desk is freed
+          when its person signs out. The link carries the desk’s key. Anyone with it can watch that desk’s amounts and codes, nothing more — but if a link
           leaks, regenerate it here and the old one stops at once.
         </Note>
 
@@ -64,6 +72,11 @@ export default async function DesksPage() {
                         </ActionForm>
                         <span className="text-xs text-stone-500">/{d.slug}</span>
                         {!d.active && <Flag tone="bad">Inactive</Flag>}
+                        {d.active && occupancy.get(d.id)?.staff_name && (
+                          <Flag tone="good">
+                            {occupancy.get(d.id)!.staff_name}, since {timeOnly(occupancy.get(d.id)!.since)}
+                          </Flag>
+                        )}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <code className="max-w-full truncate rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">{url}</code>
@@ -82,6 +95,17 @@ export default async function DesksPage() {
                             pendingLabel="Regenerating…"
                           />
                         </ActionForm>
+                        {d.active && occupancy.get(d.id)?.staff_name && (
+                          <ActionForm action={releaseDesk}>
+                            <input type="hidden" name="id" value={d.id} />
+                            <ConfirmSubmit
+                              label="Free desk"
+                              consequence={`${occupancy.get(d.id)!.staff_name} stays signed in but loses this desk; their screen looks for a desk again. Use it when someone left without signing out.`}
+                              variant="secondary"
+                              pendingLabel="Freeing…"
+                            />
+                          </ActionForm>
+                        )}
                         <ActionForm action={setDeskActive}>
                           <input type="hidden" name="id" value={d.id} />
                           <input type="hidden" name="active" value={d.active ? 'false' : 'true'} />

@@ -78,6 +78,8 @@ export type Session = {
   session_id: string
   profile_id: string
   staff_id: string | null
+  /** Reception's desk, given by the app at sign-in (0013); null for admin and manager, or when every desk is taken. */
+  desk_id?: string | null
   expires_at: string
 }
 

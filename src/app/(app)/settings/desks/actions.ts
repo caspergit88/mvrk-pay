@@ -57,3 +57,14 @@ export async function rotateDisplayKey(_prev: ActionState, formData: FormData): 
   revalidatePath(PATH)
   return done('New display link made. The old one has stopped working — open the new link on the iPad.')
 }
+
+/** Free a desk held by someone who left without signing out; their screen looks for a desk again. */
+export async function releaseDesk(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSettingsAdmin()
+  const id = String(formData.get('id') ?? '')
+  const supabase = await createClient()
+  const { error } = await db(supabase).rpc('release_desk', { p_desk: id })
+  if (error) return fail(error.message)
+  revalidatePath(PATH)
+  return done('Desk freed. The next person to open the payment screen at this location is given it.')
+}
