@@ -10,6 +10,7 @@ import {
   AdminCodeUnavailable,
   adminCodeRequired,
   clientIp,
+  emailForUsername,
   loginBlocked,
   noteLogin,
   retireStarterPassword,
@@ -42,15 +43,30 @@ async function teamEmail(formData: FormData, supabase: Awaited<ReturnType<typeof
   return email
 }
 
+const WRONG = 'Wrong username or password.'
+
 /**
- * Sign in with a password — the fallback once email codes are on. The domain
- * rule is checked here as well as in the browser and in the database trigger
- * on pay.profiles. Wrong passwords are counted per email and per address
- * (migration 0008); an admin then proves the mailbox with a code.
+ * Sign in with a password: a username (the team's personal logins, 0012) or
+ * an email (the fallback once email codes are on). The domain rule is checked
+ * here as well as in the browser and in the database trigger on pay.profiles.
+ * Wrong passwords are counted per login and per address (migration 0008); an
+ * admin then proves the mailbox with a code.
  */
 export async function signIn(formData: FormData) {
   const supabase = await createClient()
-  const email = await teamEmail(formData, supabase)
+  const typed = String(formData.get('email') ?? '').trim().toLowerCase()
+  let email: string
+  if (typed && !typed.includes('@')) {
+    // A username: find its login on the server; an unknown one reads like a wrong password.
+    const found = await emailForUsername(typed)
+    if (!found) {
+      await noteLogin(typed, clientIp(await headers()), false)
+      bounce(WRONG)
+    }
+    email = found
+  } else {
+    email = await teamEmail(formData, supabase)
+  }
   const password = String(formData.get('password') ?? '')
   if (!password) bounce('Enter your password.')
 
@@ -60,7 +76,7 @@ export async function signIn(formData: FormData) {
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   await noteLogin(email, ip, !error)
-  if (error) bounce(error.message)
+  if (error) bounce(typed.includes('@') ? error.message : WRONG)
 
   await afterSignIn(supabase, { viaCode: false })
 }
@@ -134,7 +150,7 @@ async function afterSignIn(supabase: SupabaseClient<any, any, any>, { viaCode }:
 
   const { data: profile } = await db(supabase)
     .from('profiles')
-    .select('id, email, full_name, role, location_id, active, must_change_password')
+    .select('id, email, full_name, role, location_id, active, must_change_password, username, staff_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -145,8 +161,15 @@ async function afterSignIn(supabase: SupabaseClient<any, any, any>, { viaCode }:
     else redirect('/set-password')
   }
 
-  // Reception picks a name (and PIN) next; that step writes the session row.
-  if (p.role === 'reception') redirect('/who')
+  // A personal reception login starts as its own person; a shared desk login picks a name (and PIN) next.
+  if (p.role === 'reception') {
+    if (p.staff_id) {
+      const { error: sessionError } = await db(supabase).rpc('start_session', { p_staff: null, p_pin: null })
+      if (sessionError) bounce(sessionError.message)
+      redirect('/pay')
+    }
+    redirect('/who')
+  }
 
   // Admin by password: a code to the admin's mailbox first; the session starts once it is entered.
   if (p.role === 'admin' && !viaCode) {

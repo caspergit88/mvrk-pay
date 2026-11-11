@@ -385,4 +385,40 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- 0012: personal logins (username + password, linked to a staff name)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  kp uuid := (select id from pay.locations where slug = 'kitepeople');
+  u uuid := gen_random_uuid(); st uuid; other uuid; ses pay.sessions;
+begin
+  insert into pay.staff (location_id, name) values (kp, 'Rimon') returning id into st;
+  insert into pay.staff (location_id, name) values (kp, 'Somebody Else') returning id into other;
+  insert into auth.users (id, email) values (u, 'rimon@kitepeople.com');
+  insert into pay.profiles (id, email, full_name, role, username, staff_id, must_change_password)
+  values (u, 'rimon@kitepeople.com', 'Rimon', 'reception', 'rimon', st, false);
+
+  perform pg_temp.assert_raises($q$update pay.profiles set username = 'Rimon Smith' where username = 'rimon'$q$, 'a username is lower-case letters, digits, dots, dashes');
+  perform pg_temp.assert(pay.email_for_username(' RIMON ') = 'rimon@kitepeople.com', 'a username finds its login email (any case, spaces trimmed)');
+  perform pg_temp.assert(pay.email_for_username('nobody') is null, 'an unknown username finds nothing');
+
+  -- as Rimon: the session starts as Rimon, no name to pick, no PIN
+  perform set_config('request.jwt.claim.sub', u::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u, 'session_id', gen_random_uuid())::text, true);
+  ses := pay.start_session(null, null);
+  perform pg_temp.assert(ses.staff_id = st, 'a personal login starts its session as that person, without a PIN');
+  perform pg_temp.assert_raises(format($q$select pay.start_session('%s', null)$q$, other), 'a personal login cannot start as somebody else without their PIN');
+  update pay.staff set active = false where id = st;
+  perform pg_temp.assert_raises('select pay.start_session(null, null)', 'a person taken off the staff list cannot start a session');
+  update pay.staff set active = true where id = st;
+
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.assert_raises($q$select pay.email_for_username('rimon')$q$, 'a signed-in user cannot look usernames up');
+  perform set_config('role', 'anon', true);
+  perform pg_temp.assert_raises($q$select pay.email_for_username('rimon')$q$, 'the public key cannot look usernames up');
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', '', true);
+end $$;
+
 rollback;

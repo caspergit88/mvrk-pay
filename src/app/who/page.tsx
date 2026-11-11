@@ -15,6 +15,18 @@ export default async function WhoPage({ searchParams }: { searchParams: Promise<
   if (profile.role !== 'reception') redirect('/')
 
   const supabase = await createClient()
+  // A personal login (0012) has no name to pick: start its session as its own person.
+  if (profile.staff_id) {
+    const { error } = await db(supabase).rpc('start_session', { p_staff: null, p_pin: null })
+    if (!error) redirect('/pay')
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <FormError message={error.message} />
+        </div>
+      </div>
+    )
+  }
   const [{ data: location }, { data: staff }] = await Promise.all([
     db(supabase).from('locations').select('id, name, require_pin').eq('id', profile.location_id!).maybeSingle(),
     db(supabase)

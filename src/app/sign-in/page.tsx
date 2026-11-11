@@ -37,7 +37,7 @@ export default async function SignInPage({
           MVRK <span className="text-stone-400">Pay</span>
         </h1>
         <p className="mt-1 text-sm text-stone-500">
-          {codes ? 'Sign in with your team email — we’ll email you a code.' : 'Sign in with your location’s team email.'}
+          {codes ? 'Your username and password — or your team email, and we’ll email you a code.' : 'Your username or team email, and your password.'}
         </p>
 
         <form action={signIn} className="mt-6 space-y-4">

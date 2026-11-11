@@ -9,14 +9,14 @@ export const ROLES: AppRole[] = ['admin', 'finance', 'reception']
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',
-  finance: 'Finance',
+  finance: 'Manager',
   reception: 'Reception',
 }
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: 'Everything, at every location, including Settings. David.',
   finance:
-    'Sees every location’s transactions, reports and exports. Cannot take a payment or change a setting; can re-open a closed day with a reason.',
+    'Sees everything at every location — transactions, reports, exports — but not Settings. Cannot take a payment; can re-open a closed day with a reason.',
   reception:
     'Takes payments and prints the day’s report for their own location, which is decided by their email domain.',
 }
@@ -32,6 +32,10 @@ export type Profile = {
   location_id: string | null
   active: boolean
   must_change_password: boolean
+  /** A personal login's username (rimon); null for an email-only login. */
+  username?: string | null
+  /** A personal reception login's name on the staff list: the session starts as that person. */
+  staff_id?: string | null
 }
 
 export type Location = {

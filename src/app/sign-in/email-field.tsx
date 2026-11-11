@@ -6,7 +6,9 @@ import { db } from '@/lib/supabase/db'
 import { Field, FormError, SubmitButton, inputClass } from '@/components/forms'
 import { emailMeACode, signIn } from './actions'
 
-type Lookup = { state: 'idle' | 'checking' | 'ok' | 'refused' | 'offline'; name?: string }
+type Lookup = { state: 'idle' | 'checking' | 'ok' | 'refused' | 'offline' | 'username'; name?: string }
+
+const USERNAME = /^[a-z0-9][a-z0-9._-]{1,31}$/i
 
 const ALLOWED_HINT = 'Logins use kitepeople.com, mvrkhq.com, waspoclub.com or riahkiteacademy.com.'
 
@@ -24,7 +26,13 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
   const latest = useRef('')
 
   useEffect(() => {
-    const domain = email.trim().toLowerCase().split('@')[1] ?? ''
+    const typed = email.trim()
+    // A username (rimon): signed in with a password; the server finds the login.
+    if (typed && !typed.includes('@')) {
+      setLookup(USERNAME.test(typed) ? { state: 'username' } : { state: 'idle' })
+      return
+    }
+    const domain = typed.toLowerCase().split('@')[1] ?? ''
     if (timer.current) clearTimeout(timer.current)
     // Wait for something that could be a domain before asking.
     if (!domain || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) {
@@ -49,22 +57,25 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
     }
   }, [email])
 
-  const recognised = lookup.state === 'ok' || lookup.state === 'offline'
+  const recognised = lookup.state === 'ok' || lookup.state === 'offline' || lookup.state === 'username'
+  // Usernames always use a password; emails use a code when codes are on, unless the person asked for a password.
+  const passwordMode = lookup.state === 'username' || usePassword
 
   return (
     <>
-      <Field label="Email">
+      <Field label="Username or email">
         <input
           name="email"
-          type="email"
+          type="text"
           required
           autoComplete="username"
           autoCapitalize="none"
-          inputMode="email"
+          autoCorrect="off"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
-          placeholder="reception@kitepeople.com"
+          placeholder="rimon, or you@kitepeople.com"
         />
       </Field>
 
@@ -83,7 +94,7 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
         <p className="text-sm text-amber-700">Couldn’t check the address just now — carry on, it is checked again when you sign in.</p>
       )}
 
-      {usePassword ? (
+      {passwordMode ? (
         <>
           {recognised && (
             <Field label="Password">
@@ -100,7 +111,7 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
         </SubmitButton>
       )}
 
-      {codes && (
+      {codes && lookup.state !== 'username' && (
         <p className="text-xs text-stone-500">
           <button type="button" onClick={() => setUsePassword((v) => !v)} className="underline hover:text-stone-800">
             {usePassword ? 'Email me a code instead' : 'Use a password instead'}

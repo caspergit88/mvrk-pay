@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         name={profile.full_name}
         locationName={(location as { name: string } | null)?.name ?? null}
         cashierName={(staff as { name: string } | null)?.name ?? null}
-        switchPerson={profile.role === 'reception' ? switchPerson : undefined}
+        switchPerson={profile.role === 'reception' && !profile.staff_id ? switchPerson : undefined}
       />
       <main className="app-shell mx-auto max-w-6xl px-4 py-6">{children}</main>
     </>

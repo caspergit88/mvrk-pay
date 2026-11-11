@@ -138,6 +138,18 @@ export async function sessionIdOf(supabase: Client): Promise<string | null> {
   return typeof sid === 'string' && sid ? sid : null
 }
 
+/**
+ * The login email behind a username (migration 0012), or null. Service role
+ * only, so the public key cannot list who has a login.
+ */
+export async function emailForUsername(username: string): Promise<string | null> {
+  const s = service()
+  if (!s) return null
+  const { data, error } = await db(s).rpc('email_for_username', { p_username: username })
+  if (error) return null
+  return typeof data === 'string' && data ? data : null
+}
+
 /** Migration 0008 is not in this database yet: the code step cannot run, so it is skipped rather than locking the admin out. */
 export class AdminCodeUnavailable extends Error {}
 

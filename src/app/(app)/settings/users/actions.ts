@@ -78,30 +78,49 @@ export async function setUserActive(_prev: ActionState, formData: FormData): Pro
   return done(active ? 'Account reactivated.' : 'Account deactivated. Their next request is refused; every payment they took stays as it is.')
 }
 
+const USERNAME = /^[a-z0-9][a-z0-9._-]{1,31}$/
+const MIN_PASSWORD = 8
+
 /**
- * Add a login. With email codes on, no password is needed: the account gets
- * one nobody knows and the person signs in by code. Otherwise (or for someone
- * who cannot get email) a starter password, in one step — the weddings app's way: no invite
- * email to get lost, the person signs in at once and must replace the password
- * before seeing anything. The password reaches Supabase Auth and nowhere else.
+ * Add a login. Three shapes:
+ * - a personal login with a username (rimon) and a password the admin sets —
+ *   no mailbox needed; behind it is rimon@<the location's domain>, and for
+ *   reception it is linked to the person's name on the staff list (0012);
+ * - an email login that signs in by emailed code (no password), once codes are on;
+ * - an email login with a starter password.
+ * The password reaches Supabase Auth and nowhere else.
  */
 export async function addUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSettingsAdmin()
-  const email = String(formData.get('email') ?? '').trim().toLowerCase()
+  const username = String(formData.get('username') ?? '').trim().toLowerCase()
+  const locationId = String(formData.get('location_id') ?? '')
+  let email = String(formData.get('email') ?? '').trim().toLowerCase()
   const fullName = String(formData.get('full_name') ?? '').trim()
   const password = String(formData.get('password') ?? '')
+  const mustChange = formData.get('must_change') === 'on'
   const role = formData.get('role')
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a valid email address — it is what they sign in with.')
   if (!fullName) return fail('Enter the person’s name so accounts can be told apart.')
   if (!isRole(role)) return fail('Pick a role from the list.')
-  const byCode = password === '' && emailCodesAvailable()
-  if (!byCode && password.length < 10) return fail('Use at least 10 characters for the password. They will change it on first sign-in.')
+  if (username && !USERNAME.test(username)) return fail('Username: lower-case letters, digits, dots or dashes, e.g. rimon or mo.rahman.')
+
+  const supabase = await createClient()
+  if (username && !email) {
+    if (!locationId) return fail('Pick the location — the username’s login lives on that location’s domain.')
+    const { data: loc } = await db(supabase).from('locations').select('email_domain').eq('id', locationId).maybeSingle()
+    if (!loc) return fail('That location was not found.')
+    email = `${username}@${(loc as { email_domain: string }).email_domain}`
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Enter a username and a location, or an email address.')
+
+  const byCode = password === '' && !username && emailCodesAvailable()
+  if (!byCode && password.length < MIN_PASSWORD) {
+    return fail(username ? `Set their password: at least ${MIN_PASSWORD} characters.` : `Use at least ${MIN_PASSWORD} characters for the password.`)
+  }
 
   // The domain rule, before Auth is touched (the database enforces it again on the profile row).
-  const supabase = await createClient()
   const { data: location } = await db(supabase).rpc('location_for_domain', { p_domain: email.split('@')[1] })
-  if (!location) return fail("That email isn't on an MVRK team domain (kitepeople.com, mvrkhq.com, waspoclub.com, riahkiteacademy.com).")
+  if (!location) return fail("That email isn't on an MVRK team domain (kitepeople.com, mvrkhq.com, riahkiteacademy.com).")
 
   // ------------------------------------------------------------------------
   // The one legitimate request-path use of createServiceClient(): creating the
@@ -110,6 +129,11 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
   const svc = serviceOrFail()
   if (svc.client === undefined) return svc.error
   const service = svc.client
+
+  if (username) {
+    const { data: taken } = await db(service).from('profiles').select('id').eq('username', username).maybeSingle()
+    if (taken) return fail(`The username “${username}” is taken. Pick another, e.g. ${username}2.`)
+  }
 
   const { data, error } = await service.auth.admin.createUser({
     email,
@@ -121,16 +145,38 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
   const userId = data.user?.id
   if (!userId) return fail('The account was not created.')
 
-  const { error: profileError } = await db(service)
+  const { data: profile, error: profileError } = await db(service)
     .from('profiles')
-    .insert({ id: userId, email, full_name: fullName, role, must_change_password: !byCode })
+    .insert({ id: userId, email, full_name: fullName, role, username: username || null, must_change_password: byCode ? false : mustChange })
+    .select('location_id')
+    .single()
   if (profileError) {
     // Do not leave an Auth user with no profile: it could sign in and see nothing useful.
     await service.auth.admin.deleteUser(userId)
     return fail(profileError.message)
   }
 
+  // A personal reception login is a person on the staff list: find their name there, or add it, and link the two.
+  if (role === 'reception' && username) {
+    const loc = (profile as { location_id: string }).location_id
+    const { data: existing } = await db(service).from('staff').select('id').eq('location_id', loc).eq('name', fullName).maybeSingle()
+    let staffId = (existing as { id: string } | null)?.id
+    if (!staffId) {
+      const { data: added, error: staffError } = await db(service).from('staff').insert({ location_id: loc, name: fullName }).select('id').single()
+      if (staffError) return fail(`Login created, but their name could not be added to the staff list: ${staffError.message}`)
+      staffId = (added as { id: string }).id
+    }
+    const { error: linkError } = await db(service).from('profiles').update({ staff_id: staffId }).eq('id', userId)
+    if (linkError) return fail(`Login created, but it could not be linked to ${fullName} on the staff list: ${linkError.message}`)
+  }
+
   revalidatePath(PATH)
+  revalidatePath('/settings/staff')
+  if (username) {
+    return done(
+      `${fullName} can sign in now as ${ROLE_LABELS[role]}: username “${username}” and the password you set${mustChange ? ', which they replace at first sign-in' : ''}.`,
+    )
+  }
   return done(
     byCode
       ? `${fullName} can sign in now as ${ROLE_LABELS[role]}: on the sign-in page, their email, then the code it sends them.`
@@ -144,7 +190,7 @@ export async function setStarterPassword(_prev: ActionState, formData: FormData)
   const userId = String(formData.get('user_id') ?? '')
   const password = String(formData.get('password') ?? '')
   if (!userId) return fail('No user selected.')
-  if (password.length < 10) return fail('Use at least 10 characters.')
+  if (password.length < MIN_PASSWORD) return fail(`Use at least ${MIN_PASSWORD} characters.`)
 
   const svc = serviceOrFail()
   if (svc.client === undefined) return svc.error

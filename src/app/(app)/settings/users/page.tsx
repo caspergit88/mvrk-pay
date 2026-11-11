@@ -19,12 +19,16 @@ export default async function UsersPage() {
   const me = await requireSettingsAdmin()
   const codes = emailCodesAvailable()
   const supabase = await createClient()
-  const { data, error } = await db(supabase)
-    .from('profiles')
-    .select('id, email, full_name, role, location_id, active, must_change_password, created_at, location:locations(name)')
-    .order('active', { ascending: false })
-    .order('full_name')
+  const [{ data, error }, { data: locData }] = await Promise.all([
+    db(supabase)
+      .from('profiles')
+      .select('id, email, full_name, role, location_id, active, must_change_password, username, staff_id, created_at, location:locations(name)')
+      .order('active', { ascending: false })
+      .order('full_name'),
+    db(supabase).from('locations').select('id, name').eq('active', true).order('name'),
+  ])
   const rows = (data ?? []) as unknown as Row[]
+  const locations = (locData ?? []) as { id: string; name: string }[]
 
   return (
     <>
@@ -34,29 +38,54 @@ export default async function UsersPage() {
 
       <div className="space-y-4">
         <Note>
-          A reception login is usually shared by a desk — one per location, e.g. reception@kitepeople.com — and the person on the
-          desk picks their own name at sign-in. Admin and finance are personal logins. Logins must be on a team domain.
+          Each person can have their own login: a <strong>username and password</strong>, no email needed. A reception login made
+          this way is that person — their name goes on every payment, with no name to pick and no PIN. A desk can instead share
+          one email login (e.g. reception@kitepeople.com) whose people pick their name and PIN at sign-in.
         </Note>
 
         <Card title="Add someone">
           <Disclosure label="Add A New Login">
             <ActionForm action={addUser} className="max-w-md space-y-3">
-              <Field label="Email">
-                <input name="email" type="email" required autoComplete="off" placeholder="reception@kitepeople.com" className={inputClass} />
-              </Field>
-              <Field label="Name" hint="For a shared reception login, the desk’s name is fine: “KitePeople reception”.">
+              <Field label="Name" hint="As it shows on payments and reports, e.g. Rimon or Mo Rahman.">
                 <input name="full_name" type="text" required className={inputClass} />
               </Field>
+              <Field label="Username" hint="What they type to sign in, e.g. rimon. Leave blank for an email login.">
+                <input
+                  name="username"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{1,31}"
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Location" hint="For a username login: where they work (Manager and Admin: any, e.g. MVRK HQ).">
+                <select name="location_id" defaultValue="" className={inputClass}>
+                  <option value="">—</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Email (optional with a username)" hint="Only for a login that signs in by email, e.g. reception@kitepeople.com.">
+                <input name="email" type="email" autoComplete="off" className={inputClass} />
+              </Field>
               <Field
-                label={codes ? 'Starter password (optional)' : 'Starter password'}
+                label="Password"
                 hint={
                   codes
-                    ? 'Leave blank: they sign in with a code emailed to them. Fill in only for someone who cannot get email.'
-                    : 'At least 10 characters. They type it once and then replace it.'
+                    ? 'At least 8 characters. Required for a username; leave blank for an email login that signs in by code.'
+                    : 'At least 8 characters.'
                 }
               >
-                <input name="password" type="text" required={!codes} minLength={10} autoComplete="off" className={inputClass} />
+                <input name="password" type="text" minLength={8} autoComplete="off" className={inputClass} />
               </Field>
+              <label className="flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox" name="must_change" defaultChecked /> Ask them to choose their own password at first sign-in
+              </label>
               <Field label="Role">
                 <select name="role" defaultValue="reception" className={inputClass}>
                   {ROLES.map((r) => (
@@ -90,7 +119,7 @@ export default async function UsersPage() {
                       {u.full_name}
                       {u.id === me.id && <span className="ml-2 text-xs text-stone-400">(you)</span>}
                     </div>
-                    <div className="text-xs text-stone-500">{u.email}</div>
+                    <div className="text-xs text-stone-500">{u.username ? `username: ${u.username}` : u.email}</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
                     <Flag tone="info">{ROLE_LABELS[u.role]}</Flag>
@@ -117,7 +146,7 @@ export default async function UsersPage() {
                       <input
                         name="password"
                         type="text"
-                        minLength={10}
+                        minLength={8}
                         autoComplete="off"
                         placeholder="New starter password"
                         className={`${inputClass} w-44`}

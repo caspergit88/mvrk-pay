@@ -41,7 +41,7 @@ export async function requireUser(): Promise<Profile> {
 
   const { data: profile } = await db(supabase)
     .from('profiles')
-    .select('id, email, full_name, role, location_id, active, must_change_password')
+    .select('id, email, full_name, role, location_id, active, must_change_password, username, staff_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -72,7 +72,7 @@ export async function apiProfile(): Promise<(Profile & { session: Session }) | n
   if (!user) return null
   const { data: profile } = await db(supabase)
     .from('profiles')
-    .select('id, email, full_name, role, location_id, active, must_change_password')
+    .select('id, email, full_name, role, location_id, active, must_change_password, username, staff_id')
     .eq('id', user.id)
     .maybeSingle()
   const p = profile as Profile | null
