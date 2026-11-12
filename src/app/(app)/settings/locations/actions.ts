@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireSettingsAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
+import { financeEmails } from '@/lib/format'
 import { done, fail, type ActionState } from '../_lib/action-state'
 
 const PATH = '/settings/locations'
@@ -26,7 +27,12 @@ const LocationInput = z.object({
   timezone: z.string().refine((t) => timeZones.has(t), 'Not a known timezone (e.g. Africa/Cairo).'),
   brand_label: z.string().trim().min(1).max(20),
   idle_text: z.string().trim().min(1).max(60),
-  finance_email: z.union([z.literal(''), z.email('Finance email does not look like an address.')]),
+  // One address or a few, separated by commas; stored as "a@x.com, b@y.com".
+  finance_email: z
+    .string()
+    .transform((s) => financeEmails(s).join(', '))
+    .refine((s) => financeEmails(s).every((e) => z.email().safeParse(e).success), 'Finance email: one or more addresses, separated by commas.')
+    .refine((s) => financeEmails(s).length <= 5, 'Finance email: five addresses at most.'),
   max_amount: z.coerce.number().positive('Max amount must be above zero.').max(1_000_000),
   order_expiry_min: z.coerce.number().int().min(1).max(240),
   logout_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Logout time as HH:MM, e.g. 22:00.'),

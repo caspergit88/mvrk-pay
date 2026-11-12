@@ -2,6 +2,14 @@
  * Card amounts are stored in minor units with a currency code. Everything the
  * screens show goes through here, so "EUR 120.50" looks the same everywhere.
  */
+/** A location's finance email field as a list: "a@x.com, b@y.com" → two lower-case addresses. */
+export function financeEmails(value: string | null | undefined): string[] {
+  return (value ?? '')
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 export function money(minor: number | string | null | undefined, currency = 'EUR'): string {
   const n = typeof minor === 'string' ? Number(minor) : minor
   if (n === null || n === undefined || Number.isNaN(n)) return '—'

@@ -44,3 +44,10 @@ test('toCsv quotes what needs quoting and uses display statuses', () => {
   assert.match(rows[2], /"Has a ""comma"", and quotes"/)
   assert.match(rows[2], /,Not confirmed,/)
 })
+
+test('financeEmails reads one address or a comma list', async () => {
+  const { financeEmails } = await import('../../src/lib/format')
+  assert.deepEqual(financeEmails('Naiem@RiahKiteAcademy.com, david@riahkiteacademy.com'), ['naiem@riahkiteacademy.com', 'david@riahkiteacademy.com'])
+  assert.deepEqual(financeEmails(null), [])
+  assert.deepEqual(financeEmails(' a@x.com ;b@y.com '), ['a@x.com', 'b@y.com'])
+})

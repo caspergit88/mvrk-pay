@@ -4,7 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { db } from '@/lib/supabase/db'
 import { checkTransaction, serviceOrNull, PaymentError } from '@/lib/payments'
 import { sendEmail } from '@/lib/email'
-import { money, shortDate, timeOnly } from '@/lib/format'
+import { financeEmails, money, shortDate, timeOnly } from '@/lib/format'
 import type { DisplayStatus } from '@/lib/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,7 +89,7 @@ export async function closeDay(client: Client, locationId: string, date: string,
       const r = await sendEmail(service, {
         kind: 'end_of_day',
         locationId,
-        to: [report.location.finance_email],
+        to: financeEmails(report.location.finance_email),
         subject: `${report.location.name} — end of day ${date} (${closed.close_number})`,
         text: reportText(report),
         attachments: [{ filename: `${report.location.slug}-${date}.pdf`, content: pdf, contentType: 'application/pdf' }],

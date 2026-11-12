@@ -36,8 +36,8 @@ export function LocationForm({
       <Field label="Idle text on the display">
         <input name="idle_text" required defaultValue={values.idle_text ?? 'Ready when you are'} className={inputClass} maxLength={60} />
       </Field>
-      <Field label="Finance email" hint="Where the end-of-day report goes. Blank = nobody.">
-        <input name="finance_email" type="email" defaultValue={values.finance_email ?? ''} className={inputClass} />
+      <Field label="Finance email" hint="Where the end-of-day report goes — one address, or several separated by commas. Blank = nobody.">
+        <input name="finance_email" type="email" multiple defaultValue={values.finance_email ?? ''} className={inputClass} />
       </Field>
       <Field label="Max amount per payment (EUR)">
         <input
