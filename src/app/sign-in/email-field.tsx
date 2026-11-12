@@ -98,7 +98,8 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
         <>
           {recognised && (
             <Field label="Password">
-              <input name="password" type="password" required autoComplete="current-password" className={inputClass} autoFocus />
+              {/* No autoFocus: the box appears after two letters of a username, and would take the rest of it. */}
+              <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
             </Field>
           )}
           <SubmitButton pendingLabel="Signing in…" disabled={!recognised} formAction={signIn}>
