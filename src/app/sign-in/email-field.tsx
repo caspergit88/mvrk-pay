@@ -68,14 +68,14 @@ export function EmailField({ initialEmail = '', codes = false, passwordFirst = f
           name="email"
           type="text"
           required
-          autoComplete="username"
+          // A shared desk: the box starts empty, with no example and no remembered login from the last person.
+          autoComplete="off"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
-          placeholder="rimon, or you@kitepeople.com"
         />
       </Field>
 

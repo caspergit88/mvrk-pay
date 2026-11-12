@@ -19,12 +19,15 @@ export function Nav({
   role,
   name,
   locationName,
+  deskName,
   cashierName,
   switchPerson,
 }: {
   role: AppRole
   name: string
   locationName: string | null
+  /** The desk this person was given at sign-in; shown with the location. */
+  deskName?: string | null
   cashierName: string | null
   switchPerson?: () => Promise<void>
 }) {
@@ -37,7 +40,12 @@ export function Nav({
         <Link href="/" className="font-semibold tracking-[0.2em] text-white">
           MVRK PAY
         </Link>
-        {locationName && <span className="rounded-full bg-navy-800 px-2 py-0.5 text-xs text-navy-200">{locationName}</span>}
+        {locationName && (
+          <span className="rounded-full bg-navy-800 px-2 py-0.5 text-xs text-navy-200">
+            {locationName}
+            {deskName && <span className="font-semibold text-white"> · {deskName}</span>}
+          </span>
+        )}
         <nav className="flex items-center gap-1">
           {items.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + '/')
