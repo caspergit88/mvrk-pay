@@ -9,6 +9,8 @@ import { Field, SubmitButton, inputClass } from '@/components/forms'
 import { ActionForm } from '../settings/_components/action-form'
 import { ConfirmSubmit } from '../settings/_components/confirm'
 import { PrintButton } from './print-button'
+import { ModeSwitch } from './mode-switch'
+import { RangeView } from './range-view'
 import { endOfDay, reopenDay } from './actions'
 import { readsOnly, type Location } from '@/lib/types'
 
@@ -20,13 +22,20 @@ export const metadata = { title: 'Day report · MVRK Pay' }
  * totals underneath, a signature line. Prints on A4 or as an 80 mm slip. The
  * same data goes into the PDF and the email when the day is closed.
  */
-export default async function ReportPage({ searchParams }: { searchParams: Promise<{ location?: string; date?: string }> }) {
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ location?: string; date?: string; mode?: string; from?: string; to?: string }>
+}) {
   const me = await requireProfile()
   const params = await searchParams
   const supabase = await createClient()
 
   const { data: locData } = await db(supabase).from('locations').select('id, name, slug, timezone').eq('active', true).order('name')
   const locations = (locData ?? []) as Pick<Location, 'id' | 'name' | 'slug' | 'timezone'>[]
+  // Admin, Manager and Finance can look at any date range; reception has its own day.
+  const canRange = me.role !== 'reception'
+  if (canRange && params.mode === 'range') return <RangeView locations={locations} params={params} />
   const location = (me.role === 'reception' ? locations.find((l) => l.id === me.location_id) : locations.find((l) => l.id === params.location)) ?? locations[0]
   if (!location) return <ErrorState message="No location is set up." />
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.date ?? '') ? params.date! : todayAt(location.timezone)
@@ -56,6 +65,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
             </div>
           }
         />
+        {canRange && <ModeSwitch mode="day" />}
         <form className="mb-4 flex flex-wrap items-end gap-3" method="get">
           {me.role !== 'reception' && (
             <Field label="Location">
