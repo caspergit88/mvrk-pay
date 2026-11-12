@@ -28,6 +28,19 @@ function wouldLockSelfOut(selfId: string, targetId: string, change: { role?: str
 
 type Service = { client: ReturnType<typeof createServiceClient>; error?: undefined } | { client?: undefined; error: ActionState }
 
+/** The Auth user id for an email, if the shared Auth project already has one. */
+async function findAuthUser(service: ReturnType<typeof createServiceClient>, email: string): Promise<string | null> {
+  const perPage = 1000
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await service.auth.admin.listUsers({ page, perPage })
+    if (error) return null
+    const hit = data.users.find((u) => (u.email ?? '').toLowerCase() === email)
+    if (hit) return hit.id
+    if (data.users.length < perPage) return null
+  }
+  return null
+}
+
 function serviceOrFail(): Service {
   try {
     return { client: createServiceClient() }
@@ -135,24 +148,48 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
     if (taken) return fail(`The username “${username}” is taken. Pick another, e.g. ${username}2.`)
   }
 
-  const { data, error } = await service.auth.admin.createUser({
-    email,
-    password: byCode ? randomBytes(24).toString('base64url') : password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName, app: 'mvrk-pay' },
-  })
-  if (error) return fail(error.message)
-  const userId = data.user?.id
-  if (!userId) return fail('The account was not created.')
+  // The Auth project is shared with the other MVRK apps (Weddings): the person
+  // may already have a login there. Then MVRK Pay access is added to that
+  // login, and its password is left alone — changing it here would change it
+  // for the other app too, and lock them out of it.
+  const existing = await findAuthUser(service, email)
+  if (existing) {
+    const { data: hasPay } = await db(service).from('profiles').select('id').eq('id', existing).maybeSingle()
+    if (hasPay) return fail(`${email} already has an MVRK Pay login — it is in the list below.`)
+  }
+
+  let userId: string
+  if (existing) {
+    userId = existing
+  } else {
+    const { data, error } = await service.auth.admin.createUser({
+      email,
+      password: byCode ? randomBytes(24).toString('base64url') : password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, app: 'mvrk-pay' },
+    })
+    if (error) return fail(error.message)
+    if (!data.user?.id) return fail('The account was not created.')
+    userId = data.user.id
+  }
 
   const { data: profile, error: profileError } = await db(service)
     .from('profiles')
-    .insert({ id: userId, email, full_name: fullName, role, username: username || null, must_change_password: byCode ? false : mustChange })
+    .insert({
+      id: userId,
+      email,
+      full_name: fullName,
+      role,
+      username: username || null,
+      // Their password is their own (from the other app): nothing to replace.
+      must_change_password: existing || byCode ? false : mustChange,
+    })
     .select('location_id')
     .single()
   if (profileError) {
-    // Do not leave an Auth user with no profile: it could sign in and see nothing useful.
-    await service.auth.admin.deleteUser(userId)
+    // Do not leave a new Auth user with no profile: it could sign in and see nothing useful.
+    // Never delete a login that was there before: it belongs to the other app too.
+    if (!existing) await service.auth.admin.deleteUser(userId)
     return fail(profileError.message)
   }
 
@@ -172,6 +209,13 @@ export async function addUser(_prev: ActionState, formData: FormData): Promise<A
 
   revalidatePath(PATH)
   revalidatePath('/settings/staff')
+  if (existing) {
+    return done(
+      `${email} already had a login from another MVRK app, so MVRK Pay access was added to it as ${ROLE_LABELS[role]}. ` +
+        `Their password is unchanged — the one they use there${username ? `, now also with username “${username}”` : ''}` +
+        `${emailCodesAvailable() ? ', or an emailed code' : ''}. The password typed here was not used.`,
+    )
+  }
   if (username) {
     return done(
       `${fullName} can sign in now as ${ROLE_LABELS[role]}: username “${username}” and the password you set${mustChange ? ', which they replace at first sign-in' : ''}.`,
