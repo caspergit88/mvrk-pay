@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
 import { checkDesk, clearDesk } from '@/lib/payments'
 import { fail, handle, json } from '@/lib/api'
+import { readsOnly } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ de
   return handle(async () => {
     const me = await apiProfile()
     if (!me) return fail('Sign in again.', 401)
-    if (me.role === 'finance') return fail('Finance cannot clear a display.', 403)
+    if (readsOnly(me.role)) return fail('Manager and Finance cannot clear a display.', 403)
     const { desk } = await params
     const supabase = await createClient()
     const last = await checkDesk(supabase, desk, { force: true })

@@ -5,6 +5,7 @@ import { db } from '@/lib/supabase/db'
 import { openOrder } from '@/lib/payments'
 import { parseAmount } from '@/lib/format'
 import { fail, handle, json, originOf } from '@/lib/api'
+import { readsOnly } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ des
   return handle(async () => {
     const me = await apiProfile()
     if (!me) return fail('Sign in again.', 401)
-    if (me.role === 'finance') return fail('Finance cannot take payments.', 403)
+    if (readsOnly(me.role)) return fail('Manager and Finance cannot take payments.', 403)
     const { desk } = await params
     const parsed = Body.safeParse(await request.json().catch(() => null))
     if (!parsed.success) return fail('Enter an amount.')

@@ -5,7 +5,7 @@ import { db } from '@/lib/supabase/db'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { timeOnly } from '@/lib/format'
 import { PayDesk } from './pay-desk'
-import type { Desk, Location } from '@/lib/types'
+import { readsOnly, type Desk, type Location } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Take payment · MVRK Pay' }
@@ -52,7 +52,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
       desks={rows.map((d) => ({ id: d.id, slug: d.slug, name: d.name, locationName: d.location.name, locationSlug: d.location.slug, displayKey: d.display_key, wifiSsid: d.location.wifi_ssid, timezone: d.location.timezone }))}
       deskId={chosen.id}
       origin={origin}
-      canTakePayments={profile.role !== 'finance'}
+      canTakePayments={!readsOnly(profile.role)}
     />
   )
 }

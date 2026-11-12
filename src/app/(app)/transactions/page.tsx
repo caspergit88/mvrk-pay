@@ -8,7 +8,7 @@ import { Field, inputClass } from '@/components/forms'
 import { STATUSES, filtersToQuery, listQuery, readFilters } from './_lib/filters'
 import { RecheckButton } from './recheck-button'
 import { portalUrlFor, type ProviderRow } from '@/lib/providers'
-import type { DisplayStatus, Location } from '@/lib/types'
+import { readsOnly, type DisplayStatus, type Location } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Transactions · MVRK Pay' }
@@ -86,7 +86,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     <>
       <PageHeader
         title="Transactions"
-        subtitle={me.role === 'finance' ? 'Every location. Filter, then download the same list as CSV.' : 'Filter, then download the same list as CSV.'}
+        subtitle={readsOnly(me.role) ? 'Every location. Filter, then download the same list as CSV.' : 'Filter, then download the same list as CSV.'}
         action={
           <Link href={`/transactions/export?${query}`} className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50">
             Download CSV

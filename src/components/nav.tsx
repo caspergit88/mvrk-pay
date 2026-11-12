@@ -6,8 +6,8 @@ import type { AppRole } from '@/lib/types'
 
 const NAV: { href: string; label: string; roles: AppRole[] }[] = [
   { href: '/pay', label: 'Take payment', roles: ['admin', 'reception'] },
-  { href: '/transactions', label: 'Transactions', roles: ['admin', 'finance'] },
-  { href: '/report', label: 'Day report', roles: ['admin', 'finance', 'reception'] },
+  { href: '/transactions', label: 'Transactions', roles: ['admin', 'manager', 'finance'] },
+  { href: '/report', label: 'Day report', roles: ['admin', 'manager', 'finance', 'reception'] },
   { href: '/settings', label: 'Settings', roles: ['admin'] },
 ]
 

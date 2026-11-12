@@ -3,25 +3,30 @@
  * supabase/migrations; when a column changes there, it changes here.
  */
 
-export type AppRole = 'admin' | 'finance' | 'reception'
+export type AppRole = 'admin' | 'manager' | 'finance' | 'reception'
 
-export const ROLES: AppRole[] = ['admin', 'finance', 'reception']
+export const ROLES: AppRole[] = ['admin', 'manager', 'finance', 'reception']
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: 'Admin',
-  finance: 'Manager',
+  manager: 'Manager',
+  finance: 'Finance',
   reception: 'Reception',
 }
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   admin: 'Everything, at every location, including Settings. David.',
-  finance:
+  manager:
     'Sees everything at every location — transactions, reports, exports — but not Settings. Cannot take a payment; can re-open a closed day with a reason.',
+  finance: 'The same access as Manager, with the title Finance.',
   reception:
     'Takes payments and prints the day’s report for their own location, which is decided by their email domain.',
 }
 
-export const isRole = (value: unknown): value is AppRole =>
+/** Manager and Finance: read every location, change nothing, take no payments. */
+export const readsOnly = (role: AppRole) => role === 'manager' || role === 'finance'
+
+export const isRole =(value: unknown): value is AppRole =>
   typeof value === 'string' && (ROLES as string[]).includes(value)
 
 export type Profile = {

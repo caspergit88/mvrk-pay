@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
 import { adminCodeRequired } from '@/lib/login-guard'
-import type { AppRole, Profile, Session } from '@/lib/types'
+import { readsOnly, type AppRole, type Profile, type Session } from '@/lib/types'
 
 /**
  * The signed-in person's MVRK Pay profile, or a redirect to sign-in.
@@ -101,7 +101,7 @@ export async function requireDesk() {
 }
 
 export const canManageSettings = (role: AppRole) => role === 'admin'
-export const canSeeAllLocations = (role: AppRole) => role === 'admin' || role === 'finance'
+export const canSeeAllLocations = (role: AppRole) => role === 'admin' || readsOnly(role)
 export const canTakePayments = (role: AppRole) => role === 'admin' || role === 'reception'
 
 /**
@@ -110,12 +110,12 @@ export const canTakePayments = (role: AppRole) => role === 'admin' || role === '
  * pointing there would go nowhere.
  */
 export function payHomeFor(role: AppRole): string {
-  return role === 'finance' ? '/transactions' : '/pay'
+  return readsOnly(role) ? '/transactions' : '/pay'
 }
 
 /** Where each role lands after sign-in. */
 export function homePathFor(role: AppRole): string {
   if (role === 'admin') return '/apps'
-  if (role === 'finance') return '/transactions'
+  if (readsOnly(role)) return '/transactions'
   return '/'
 }

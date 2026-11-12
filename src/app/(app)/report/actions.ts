@@ -6,11 +6,12 @@ import { requireProfile } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/db'
 import { closeDay } from '@/lib/report'
+import { readsOnly } from '@/lib/types'
 import { done, fail, type ActionState } from '../settings/_lib/action-state'
 
 export async function endOfDay(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireProfile()
-  if (me.role === 'finance') return fail('Finance reviews the day; reception or admin closes it.')
+  if (readsOnly(me.role)) return fail('Manager and Finance review the day; reception or admin closes it.')
   const locationId = String(formData.get('location_id') ?? '')
   const date = String(formData.get('date') ?? '')
   if (!locationId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail('No day selected.')

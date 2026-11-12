@@ -497,4 +497,26 @@ begin
   perform set_config('request.jwt.claim.sub', '', true);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- 0014–0015: Manager and Finance, the same access under two titles
+-- ---------------------------------------------------------------------------
+do $$
+declare m uuid := gen_random_uuid(); f uuid := gen_random_uuid(); kp uuid := (select id from pay.locations where slug = 'kitepeople');
+begin
+  insert into auth.users (id, email) values (m, 'mo@mvrkhq.com'), (f, 'naiem@mvrkhq.com');
+  insert into pay.profiles (id, email, full_name, role) values (m, 'mo@mvrkhq.com', 'Mo', 'manager'), (f, 'naiem@mvrkhq.com', 'Naiem', 'finance');
+  perform set_config('request.jwt.claim.sub', m::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', m, 'session_id', gen_random_uuid())::text, true);
+  perform pay.start_session(null, null);
+  perform pg_temp.assert(pay.is_finance() and not pay.is_admin(), 'a manager reads every location and is not an admin');
+  perform pg_temp.assert(not pay.can_write_location(kp), 'a manager cannot take payments');
+  perform pg_temp.assert(exists (select 1 from pay.apps where name = 'MVRK Pay'), 'a manager sees the MVRK Pay tile');
+  perform set_config('request.jwt.claim.sub', f::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', f, 'session_id', gen_random_uuid())::text, true);
+  perform pay.start_session(null, null);
+  perform pg_temp.assert(pay.is_finance() and not pay.is_admin() and not pay.can_write_location(kp), 'finance has the same access as a manager');
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+end $$;
+
 rollback;

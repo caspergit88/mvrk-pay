@@ -10,7 +10,7 @@ import { ActionForm } from '../settings/_components/action-form'
 import { ConfirmSubmit } from '../settings/_components/confirm'
 import { PrintButton } from './print-button'
 import { endOfDay, reopenDay } from './actions'
-import type { Location } from '@/lib/types'
+import { readsOnly, type Location } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Day report · MVRK Pay' }
@@ -38,7 +38,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
     return <ErrorState message={e instanceof Error ? e.message : String(e)} />
   }
   const tz = report.location.timezone
-  const canClose = me.role !== 'finance'
+  const canClose = !readsOnly(me.role)
   const canReopen = me.role !== 'reception'
   const isClosed = !!report.close && !report.close.reopened_at
   const unresolved = report.lines.filter((l) => l.display_status === 'Waiting' || l.display_status === 'Not confirmed' || l.display_status === 'Declined').length
